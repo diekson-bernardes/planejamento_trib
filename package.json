@@ -1,0 +1,22 @@
+{
+  "name": "planejamento-trib",
+  "private": true,
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "verify": "node scripts/verify.mjs",
+    "verify:worker": "python -m pytest services/worker/tests -q",
+    "verify:db": "npx supabase test db",
+    "verify:web": "npm run typecheck --workspace apps/web && npm run test --workspace apps/web",
+    "db:start": "npx supabase start",
+    "db:stop": "npx supabase stop",
+    "db:reset": "npx supabase db reset",
+    "db:types": "npx supabase gen types typescript --local > apps/web/src/lib/database.types.ts",
+    "dev:web": "npm run dev --workspace apps/web",
+    "dev:worker": "python -m worker.main"
+  },
+  "devDependencies": {
+    "supabase": "2.117.0"
+  }
+}
