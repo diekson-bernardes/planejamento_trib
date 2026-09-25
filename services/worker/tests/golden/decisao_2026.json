@@ -1,0 +1,143 @@
+{
+ "descricao": "Caso dourado da decisão: Projeção 2026 da amostra comercial (12 documentos de 06–08/2026; jan–mai estimados pelo PGDAS-D, jun–ago realizados, set–dez projetados pela média), premissas sugeridas aceitas, declarações de elegibilidade = 'nao' e limiar de 5%",
+ "approved_by": "Diekson Bernardes (responsável de negócio)",
+ "approved_at": "2026-09-25",
+ "approval_note": "Aprovado no SDD Build do ciclo 3 após apresentação dos totais, da recomendação (Simples 5,91% abaixo do Presumido) e dos pontos de virada; DREs sem CMV (margem ≈ 80%, Real elevado) registradas como característica do dado",
+ "sample_set": "completo_06_08",
+ "rules_version": "2026.1.0",
+ "decision_version": "2026.1.0",
+ "threshold": "0.05",
+ "assumption_overrides": {
+  "eleg.socio_pj": "nao",
+  "eleg.participacao_receita_global": "nao",
+  "eleg.atividade_vedada": "nao",
+  "eleg.debitos_sem_suspensao": "nao",
+  "eleg.obrigatoriedade_real": "nao"
+ },
+ "origins": {
+  "2026-01": "estimado",
+  "2026-02": "estimado",
+  "2026-03": "estimado",
+  "2026-04": "estimado",
+  "2026-05": "estimado",
+  "2026-06": "realizado",
+  "2026-07": "realizado",
+  "2026-08": "realizado",
+  "2026-09": "projetado",
+  "2026-10": "projetado",
+  "2026-11": "projetado",
+  "2026-12": "projetado"
+ },
+ "receita_anual": "3501301.63",
+ "ranking": [
+  "SIMPLES",
+  "PRESUMIDO",
+  "REAL"
+ ],
+ "regimes": {
+  "SIMPLES": {
+   "total": "387997.75",
+   "by_period": {
+    "2026-01": "36771.05",
+    "2026-02": "24257.98",
+    "2026-03": "34080.37",
+    "2026-04": "33061.14",
+    "2026-05": "34344.32",
+    "2026-06": "36843.53",
+    "2026-07": "38975.46",
+    "2026-08": "23430.47",
+    "2026-09": "32025.62",
+    "2026-10": "31820.92",
+    "2026-11": "31379.19",
+    "2026-12": "31007.70"
+   }
+  },
+  "PRESUMIDO": {
+   "total": "410946.48",
+   "by_period": {
+    "2026-01": "31457.65",
+    "2026-02": "22702.78",
+    "2026-03": "27271.75",
+    "2026-04": "26335.24",
+    "2026-05": "27369.03",
+    "2026-06": "29904.37",
+    "2026-07": "29398.15",
+    "2026-08": "21533.16",
+    "2026-09": "26945.23",
+    "2026-10": "26945.23",
+    "2026-11": "26945.23",
+    "2026-12": "26945.23",
+    "2026-T1": "22067.66",
+    "2026-T2": "23127.77",
+    "2026-T3": "20255.57",
+    "2026-T4": "21742.43"
+   }
+  },
+  "REAL": {
+   "total": "1201374.01",
+   "by_period": {
+    "2026-01": "36050.10",
+    "2026-02": "25422.75",
+    "2026-03": "30968.94",
+    "2026-04": "29832.13",
+    "2026-05": "31087.01",
+    "2026-06": "33950.97",
+    "2026-07": "38729.17",
+    "2026-08": "19037.60",
+    "2026-09": "30572.59",
+    "2026-10": "30572.59",
+    "2026-11": "30572.59",
+    "2026-12": "30572.59",
+    "2026-T1": "210681.56",
+    "2026-T2": "212535.54",
+    "2026-T3": "202745.84",
+    "2026-T4": "208042.04"
+   }
+  }
+ },
+ "recomendacao": {
+  "status": "recomendado",
+  "regime": "SIMPLES",
+  "segundo": "PRESUMIDO",
+  "economia_vs_segundo": "22948.73",
+  "economia_vs_segundo_pct": "0.0591",
+  "economia_vs_atual": "0.00"
+ },
+ "sensibilidade": {
+  "receita": {
+   "virada_x": "1.097266",
+   "virada_valor": "3841857.48",
+   "novo_lider": "PRESUMIDO",
+   "robustez": "atencao",
+   "limite_juridico_x": "1.373828"
+  },
+  "margem": {
+   "virada_x": "0.107656",
+   "virada_valor": "0.107656",
+   "novo_lider": "REAL",
+   "robustez": "robusta",
+   "limite_juridico_x": null
+  },
+  "folha": {
+   "virada_x": "0.808790",
+   "virada_valor": "348604.39",
+   "novo_lider": "PRESUMIDO",
+   "robustez": "atencao",
+   "limite_juridico_x": null
+  },
+  "creditos": {
+   "virada_x": null,
+   "virada_valor": null,
+   "novo_lider": null,
+   "robustez": null,
+   "limite_juridico_x": null
+  },
+  "icms_iss": {
+   "virada_x": "0.699219",
+   "virada_valor": "53232.92",
+   "novo_lider": "PRESUMIDO",
+   "robustez": "robusta",
+   "limite_juridico_x": null
+  }
+ }
+}

@@ -95,3 +95,25 @@ describe("confirmação de premissa (AT-104)", () => {
     expect(confirmAssumptionSchema.safeParse({ assumptionId: uuid, value: "nao", suggested: "nao_informado" }).success).toBe(false);
   });
 });
+
+describe("decisão tributária (ciclo 3)", () => {
+  it("exige comentário ao devolver a recomendação (AT-217)", async () => {
+    const { returnRecommendationSchema } = await import("@/lib/schemas");
+    expect(returnRecommendationSchema.safeParse({ recommendationId: uuid, comment: " ok " }).success).toBe(false);
+    expect(returnRecommendationSchema.safeParse({ recommendationId: uuid, comment: "Revisar margem" }).success).toBe(true);
+  });
+
+  it("exige nome e CRC ao marcar responsável técnico (AT-214)", async () => {
+    const { technicalResponsibleSchema } = await import("@/lib/schemas");
+    expect(technicalResponsibleSchema.safeParse({ userId: uuid, flag: true, name: "Maria", crc: "" }).success).toBe(false);
+    expect(technicalResponsibleSchema.safeParse({ userId: uuid, flag: true, name: "Maria", crc: "SP-123456/O-7" }).success).toBe(true);
+    expect(technicalResponsibleSchema.safeParse({ userId: uuid, flag: false }).success).toBe(true);
+  });
+
+  it("aceita limiar só entre 0 e 1 exclusive", async () => {
+    const { thresholdSchema } = await import("@/lib/schemas");
+    expect(thresholdSchema.safeParse({ threshold: 0 }).success).toBe(false);
+    expect(thresholdSchema.safeParse({ threshold: 1 }).success).toBe(false);
+    expect(thresholdSchema.safeParse({ threshold: 0.05 }).success).toBe(true);
+  });
+});

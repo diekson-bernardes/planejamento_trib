@@ -1,5 +1,5 @@
-"""Orquestração dos jobs: extract, reconcile, export_xlsx e, no ciclo 2, suggest_assumptions, calculate e
-export_simulation."""
+"""Orquestração dos jobs: extract, reconcile, export_xlsx; no ciclo 2, suggest_assumptions, calculate e
+export_simulation; no ciclo 3, project e emit_report."""
 import hashlib
 import json
 import sys
@@ -18,6 +18,10 @@ from worker.errors import (
 from worker.config import load_settings
 from worker.engine.assumptions import Assumptions, assumptions_hash, suggest
 from worker.engine.calculate import NoCompleteCompetence, calculate
+from worker.engine.decision import project
+from worker.engine.decision_params import DecisionParams, load_decision_params
+from worker.engine.projection import ProjectionError
+from worker.report_pdf import build_recommendation_pdf, report_data, sha256
 from worker.engine.memory import line_dict
 from worker.engine.rules import RuleSet, load_rules
 from worker.engine.snapshot import SnapshotView
@@ -71,11 +75,18 @@ def default_rules() -> RuleSet:
     return load_rules(settings.rules_dir, settings.rules_exercise)
 
 
+@lru_cache(maxsize=1)
+def default_decision_params() -> DecisionParams:
+    return load_decision_params(load_settings().decision_params)
+
+
 class Pipeline:
-    def __init__(self, conn: psycopg.Connection, storage: Storage, rules: RuleSet | None = None):
+    def __init__(self, conn: psycopg.Connection, storage: Storage, rules: RuleSet | None = None,
+                 decision: DecisionParams | None = None):
         self.conn = conn
         self.storage = storage
         self.rules = rules or default_rules()
+        self.decision = decision or default_decision_params()
 
     def handle(self, job: dict[str, Any]) -> str | None:
         kind = job["kind"]
@@ -91,6 +102,10 @@ class Pipeline:
             return self.calculate(job)
         if kind == "export_simulation":
             return self.export_simulation(job)
+        if kind == "project":
+            return self.project(job)
+        if kind == "emit_report":
+            return self.emit_report(job)
         raise ValueError("tipo de job desconhecido: " + kind)
 
     # ------------------------------------------------------------------ extract
@@ -241,6 +256,74 @@ class Pipeline:
         path = simulation_export_path(str(office_id), str(sim["case_id"]), str(sim["id"]))
         self.storage.upload(path, data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         log("simulation.exported", job_id=job["id"], simulation_id=sim["id"], office_id=office_id, bytes=len(data))
+        return None
+
+    # ------------------------------------------------------------------ ciclo 3: projeção e decisão
+    def project(self, job: dict[str, Any]) -> str | None:
+        office_id = job["office_id"]
+        case_id = job["payload"]["case_id"]
+        started = time.monotonic()
+        snap = db.get_case_snapshot(self.conn, case_id, office_id)
+        if snap is None:
+            return "dossiê não homologado"
+        rows = db.load_assumptions(self.conn, case_id, office_id)
+        pending = [r for r in rows if r["status"] != "confirmed"]
+        # prévia: premissas pendentes entram com o valor sugerido e bloqueiam a recomendação
+        used = [{"key": r["key"], "scope": r["scope"], "label": r["label"],
+                 "value": r["value"] if r["status"] == "confirmed" else r["suggested_value"],
+                 "suggested_value": r["suggested_value"], "justification": r["justification"],
+                 "status": r["status"], "confirmed_at": r["confirmed_at"].isoformat() if r["confirmed_at"] else None}
+                for r in rows]
+        blockers = [f"{len(pending)} premissa(s) pendente(s) de confirmação"] if pending else []
+        a_hash = assumptions_hash([{"key": u["key"], "scope": u["scope"], "value": u["value"],
+                                    "status": u["status"]} for u in used])
+        threshold = db.load_decision_threshold(self.conn, office_id)
+        sha = snap["sha256"].strip()
+        existing = db.find_projection(self.conn, case_id, office_id, sha, a_hash, self.rules.hash,
+                                      self.decision.hash, threshold)
+        if existing is not None:
+            log("projection.reused", job_id=job["id"], case_id=case_id, projection_id=existing["id"])
+            return "resultado idêntico a uma projeção existente (mesmo snapshot, premissas, regras e política)"
+        common = dict(case_id=case_id, office_id=office_id, snapshot_id=snap["id"], snapshot_sha=sha,
+                      assumptions_hash=a_hash, rules_version=self.rules.version, rules_hash=self.rules.hash,
+                      decision_version=self.decision.version, decision_hash=self.decision.hash, threshold=threshold,
+                      assumptions=used, requested_by=job["payload"].get("requested_by"))
+        view = SnapshotView(snap["content"])
+        try:
+            res = project(view, Assumptions(used), self.rules, self.decision, threshold, blockers)
+        except (ProjectionError, NoCompleteCompetence) as exc:
+            code = getattr(exc, "code", "PROJECTION_BLOCKED")
+            db.save_projection(self.conn, **common, year=0, status="failed", result={}, sensitivity=[],
+                               recommendation={}, result_hash=None, lines=[], engine_runs=None,
+                               duration_ms=int((time.monotonic() - started) * 1000), error_code=code,
+                               error_message=str(exc))
+            log("projection.failed", job_id=job["id"], case_id=case_id, code=code)
+            return code
+        rec = res.recommendation.as_dict()
+        proj_id = db.save_projection(
+            self.conn, **common, year=res.projected.year, status="done", result=res.summary(),
+            sensitivity=[s.as_dict() for s in res.sensitivity], recommendation=rec, result_hash=res.result_hash,
+            lines=res.lines(), engine_runs=res.runs, duration_ms=int((time.monotonic() - started) * 1000))
+        log("projection.blocked" if rec["status"] == "bloqueado" else "projection.done", job_id=job["id"],
+            case_id=case_id, office_id=office_id, projection_id=proj_id, status=rec["status"], regime=rec["regime"],
+            engine_runs=res.runs, duration_ms=int((time.monotonic() - started) * 1000))
+        return None
+
+    def emit_report(self, job: dict[str, Any]) -> str | None:
+        office_id = job["office_id"]
+        rec_id = job["payload"]["recommendation_id"]
+        row = db.get_report_data(self.conn, rec_id, office_id)
+        if row is None:
+            return "recomendação inexistente"
+        if row["status"] != "aprovada":
+            return "recomendação não está aprovada (status " + row["status"] + ")"
+        data = build_recommendation_pdf(report_data(row))
+        digest = sha256(data)
+        path = db.report_path(str(office_id), str(row["case_id"]), str(rec_id))
+        self.storage.upload(path, data, "application/pdf")
+        if not db.mark_emitted(self.conn, rec_id, office_id, path, digest):
+            return "recomendação alterada durante a emissão"
+        log("report.emitted", job_id=job["id"], recommendation_id=rec_id, office_id=office_id, bytes=len(data))
         return None
 
     # ------------------------------------------------------------------ loop

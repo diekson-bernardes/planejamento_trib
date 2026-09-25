@@ -54,7 +54,8 @@ export function AssumptionForm({ row, readOnly }: { row: AssumptionRow; readOnly
   function onSubmit(form: FormData) {
     const justification = String(form.get("justification") ?? "");
     let value: unknown = form.get("value");
-    if (row.value_type === "decimal" || row.value_type === "percent") value = normalizeDecimal(String(value ?? ""));
+    if (row.value_type === "decimal" || row.value_type === "percent" || row.value_type === "ratio")
+      value = normalizeDecimal(String(value ?? ""));
     if (row.value_type === "boolean") value = form.get("value") === "true";
     if (row.value_type === "taxes") value = TAXES.filter((t) => form.get(`tax_${t}`) === "on");
     if (row.value_type === "profile") {
@@ -99,10 +100,11 @@ export function AssumptionForm({ row, readOnly }: { row: AssumptionRow; readOnly
       )}
       {editing && (
         <form action={onSubmit} className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-          {(row.value_type === "decimal" || row.value_type === "percent") && (
+          {(row.value_type === "decimal" || row.value_type === "percent" || row.value_type === "ratio") && (
             <div>
               <label className="label" htmlFor={`v-${row.id}`}>
-                Valor {row.value_type === "percent" ? "(fração: 0,02 = 2%)" : "(R$)"}
+                Valor {row.value_type === "percent" ? "(fração: 0,02 = 2%)"
+                  : row.value_type === "ratio" ? "(fração com sinal: 0,15 = 15%; −0,05 = prejuízo de 5%)" : "(R$)"}
               </label>
               <input id={`v-${row.id}`} name="value" className="input max-w-64" inputMode="decimal"
                 defaultValue={String(initial ?? "")} required />

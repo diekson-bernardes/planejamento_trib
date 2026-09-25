@@ -135,6 +135,21 @@ def rules():
 
 
 @pytest.fixture(scope="session")
+def decision_params():
+    from worker.config import load_settings
+    from worker.engine.decision_params import load_decision_params
+
+    return load_decision_params(load_settings().decision_params)
+
+
+def golden_assumptions_06_08(view, rules, golden, overrides: dict | None = None):
+    """Premissas sugeridas aceitas + declarações do golden (as mesmas do caso dourado do ciclo 2)."""
+    g = golden("motor_202606_08")
+    base = {(k, "caso"): v for k, v in g["assumption_overrides"].items()}
+    return accepted_assumptions(view, rules, {**base, **(overrides or {})})
+
+
+@pytest.fixture(scope="session")
 def golden():
     def load(name: str) -> dict:
         return json.loads((GOLDEN / (name + ".json")).read_text(encoding="utf-8"))
@@ -145,6 +160,7 @@ def golden():
 # ---------------------------------------------------------------- banco local
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@127.0.0.1:54322/postgres")
 CLEANUP_TABLES = [
+    "recommendation_events", "recommendations", "projection_lines", "projections",
     "simulation_lines", "simulations", "assumptions",
     "audit_events", "snapshots", "reconciliations", "validations", "value_adjustments",
     "extracted_values", "jobs", "source_files", "tax_cases", "account_mappings", "companies",

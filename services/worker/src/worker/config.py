@@ -19,6 +19,7 @@ class Settings(BaseModel):
     lease_seconds: int = Field(default=300, ge=10)
     rules_dir: str = str(DEFAULT_RULES_DIR)
     rules_exercise: str = "2026"
+    decision_params: str = str(DEFAULT_RULES_DIR / "decisao.json")
 
 
 def load_settings() -> Settings:
@@ -34,4 +35,7 @@ def load_settings() -> Settings:
         lease_seconds=int(os.environ.get("WORKER_LEASE_SECONDS", "300")),
         rules_dir=os.environ.get("RULES_DIR", str(DEFAULT_RULES_DIR)),
         rules_exercise=os.environ.get("RULES_EXERCISE", "2026"),
+        decision_params=os.environ.get(
+            "DECISION_PARAMS", os.path.join(os.environ.get("RULES_DIR", str(DEFAULT_RULES_DIR)), "decisao.json")
+        ),
     )
