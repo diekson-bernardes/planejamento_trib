@@ -1,8 +1,10 @@
-"""Orquestração dos jobs: extract, reconcile e export_xlsx."""
+"""Orquestração dos jobs: extract, reconcile, export_xlsx e, no ciclo 2, suggest_assumptions, calculate e
+export_simulation."""
 import hashlib
 import json
 import sys
 import time
+from functools import lru_cache
 from typing import Any
 
 import psycopg
@@ -13,7 +15,13 @@ from worker.errors import (
     CnpjMismatch, HashMismatch, HasAdjustments, LayoutNotRecognized, NoTextLayer, NotPdf,
     Unclassified, WorkerError,
 )
-from worker.export_xlsx import build_xlsx, export_path
+from worker.config import load_settings
+from worker.engine.assumptions import Assumptions, assumptions_hash, suggest
+from worker.engine.calculate import NoCompleteCompetence, calculate
+from worker.engine.memory import line_dict
+from worker.engine.rules import RuleSet, load_rules
+from worker.engine.snapshot import SnapshotView
+from worker.export_xlsx import build_simulation_xlsx, build_xlsx, export_path, simulation_export_path
 from worker.models import DocType, ParseResult
 from worker.parsers import get_parser
 from worker.pdf.layout import read_rows
@@ -56,10 +64,18 @@ def parse_document(data: bytes, forced: DocType | None = None):
     return result, validate(result, cls.monthly)
 
 
+@lru_cache(maxsize=1)
+def default_rules() -> RuleSet:
+    """Regras carregadas uma vez por processo; arquivo inválido levanta RulesError (o worker não sobe)."""
+    settings = load_settings()
+    return load_rules(settings.rules_dir, settings.rules_exercise)
+
+
 class Pipeline:
-    def __init__(self, conn: psycopg.Connection, storage: Storage):
+    def __init__(self, conn: psycopg.Connection, storage: Storage, rules: RuleSet | None = None):
         self.conn = conn
         self.storage = storage
+        self.rules = rules or default_rules()
 
     def handle(self, job: dict[str, Any]) -> str | None:
         kind = job["kind"]
@@ -69,6 +85,12 @@ class Pipeline:
             return self.reconcile(job)
         if kind == "export_xlsx":
             return self.export(job)
+        if kind == "suggest_assumptions":
+            return self.suggest_assumptions(job)
+        if kind == "calculate":
+            return self.calculate(job)
+        if kind == "export_simulation":
+            return self.export_simulation(job)
         raise ValueError("tipo de job desconhecido: " + kind)
 
     # ------------------------------------------------------------------ extract
@@ -149,6 +171,76 @@ class Pipeline:
         path = export_path(str(office_id), str(snap["case_id"]), str(snap["id"]))
         self.storage.upload(path, data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         log("export.generated", job_id=job["id"], case_id=snap["case_id"], office_id=office_id, bytes=len(data))
+        return None
+
+    # ------------------------------------------------------------------ motor: premissas
+    def suggest_assumptions(self, job: dict[str, Any]) -> str | None:
+        office_id = job["office_id"]
+        case_id = job["payload"]["case_id"]
+        snap = db.get_case_snapshot(self.conn, case_id, office_id)
+        if snap is None:
+            return "dossiê não homologado"
+        current = [r for r in db.load_assumptions(self.conn, case_id, office_id) if r["status"] == "confirmed"]
+        rows = [s.as_row() for s in suggest(SnapshotView(snap["content"]), self.rules, Assumptions(current))]
+        db.upsert_suggestions(self.conn, case_id, office_id, rows)
+        log("suggest.generated", job_id=job["id"], case_id=case_id, office_id=office_id, assumptions=len(rows),
+            rules_version=self.rules.version)
+        return None
+
+    # ------------------------------------------------------------------ motor: cálculo
+    def calculate(self, job: dict[str, Any]) -> str | None:
+        office_id = job["office_id"]
+        case_id = job["payload"]["case_id"]
+        started = time.monotonic()
+        snap = db.get_case_snapshot(self.conn, case_id, office_id)
+        if snap is None:
+            return "dossiê não homologado"
+        rows = db.load_assumptions(self.conn, case_id, office_id)
+        pending = [r for r in rows if r["status"] != "confirmed"]
+        if pending:   # premissa voltou a pendente depois do pedido (ex.: sugestões regeneradas)
+            log("simulation.skipped", job_id=job["id"], case_id=case_id, pending=len(pending))
+            return f"não calculado — {len(pending)} premissa(s) voltaram a pendente; confirme e peça o cálculo de novo"
+        confirmed = [{"key": r["key"], "scope": r["scope"], "value": r["value"]} for r in rows]
+        a_hash = assumptions_hash(confirmed)
+        # cópia gravada na simulação: a exportação usa esta, não as premissas atuais do dossiê
+        used = [{"key": r["key"], "scope": r["scope"], "label": r["label"], "suggested_value": r["suggested_value"],
+                 "value": r["value"], "justification": r["justification"],
+                 "confirmed_at": r["confirmed_at"].isoformat() if r["confirmed_at"] else None} for r in rows]
+        sha = snap["sha256"].strip()
+        existing = db.find_simulation(self.conn, case_id, office_id, sha, a_hash, self.rules.hash)
+        if existing is not None:
+            log("simulation.reused", job_id=job["id"], case_id=case_id, simulation_id=existing["id"])
+            return "resultado idêntico a uma simulação existente (mesmo snapshot, premissas e regras)"
+        common = dict(case_id=case_id, office_id=office_id, snapshot_id=snap["id"], snapshot_sha=sha,
+                      assumptions_hash=a_hash, rules_version=self.rules.version, rules_hash=self.rules.hash,
+                      requested_by=job["payload"].get("requested_by"), assumptions=used)
+        try:
+            result = calculate(SnapshotView(snap["content"]), Assumptions(confirmed), self.rules)
+        except NoCompleteCompetence as exc:
+            db.save_simulation(self.conn, **common, status="failed", result={}, result_hash=None, lines=[],
+                               error_code=exc.code, error_message=str(exc),
+                               duration_ms=int((time.monotonic() - started) * 1000))
+            log("simulation.failed", job_id=job["id"], case_id=case_id, code=exc.code)
+            return exc.code
+        duration = int((time.monotonic() - started) * 1000)
+        sim_id = db.save_simulation(self.conn, **common, status="done", result=result.summary(),
+                                    result_hash=result.result_hash, lines=[line_dict(l) for l in result.lines],
+                                    duration_ms=duration)
+        log("simulation.done", job_id=job["id"], case_id=case_id, office_id=office_id, simulation_id=sim_id,
+            lines=len(result.lines), ranking=",".join(result.ranking), duration_ms=duration,
+            not_calculated=",".join(r for r, v in result.regimes.items() if v.status != "calculado"))
+        return None
+
+    def export_simulation(self, job: dict[str, Any]) -> str | None:
+        office_id = job["office_id"]
+        sim = db.get_simulation(self.conn, job["payload"]["simulation_id"], office_id)
+        if sim is None:
+            return "simulação inexistente"
+        lines = db.get_simulation_lines(self.conn, sim["id"], office_id)
+        data = build_simulation_xlsx(sim, lines, sim["assumptions"])
+        path = simulation_export_path(str(office_id), str(sim["case_id"]), str(sim["id"]))
+        self.storage.upload(path, data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        log("simulation.exported", job_id=job["id"], simulation_id=sim["id"], office_id=office_id, bytes=len(data))
         return None
 
     # ------------------------------------------------------------------ loop

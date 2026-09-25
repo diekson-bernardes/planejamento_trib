@@ -79,6 +79,84 @@ export type Database = {
           },
         ]
       }
+      assumptions: {
+        Row: {
+          case_id: string
+          choices: Json | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          grp: string
+          id: string
+          justification: string | null
+          key: string
+          label: string
+          office_id: string
+          scope: string
+          status: string
+          suggested_origin: Json
+          suggested_value: Json | null
+          updated_at: string
+          value: Json | null
+          value_type: string
+        }
+        Insert: {
+          case_id: string
+          choices?: Json | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          grp: string
+          id?: string
+          justification?: string | null
+          key: string
+          label: string
+          office_id: string
+          scope: string
+          status?: string
+          suggested_origin?: Json
+          suggested_value?: Json | null
+          updated_at?: string
+          value?: Json | null
+          value_type: string
+        }
+        Update: {
+          case_id?: string
+          choices?: Json | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          grp?: string
+          id?: string
+          justification?: string | null
+          key?: string
+          label?: string
+          office_id?: string
+          scope?: string
+          status?: string
+          suggested_origin?: Json
+          suggested_value?: Json | null
+          updated_at?: string
+          value?: Json | null
+          value_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assumptions_case_id_office_id_fkey"
+            columns: ["case_id", "office_id"]
+            isOneToOne: false
+            referencedRelation: "tax_cases"
+            referencedColumns: ["id", "office_id"]
+          },
+          {
+            foreignKeyName: "assumptions_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_events: {
         Row: {
           actor: string | null
@@ -417,6 +495,163 @@ export type Database = {
             columns: ["office_id"]
             isOneToOne: false
             referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      simulation_lines: {
+        Row: {
+          activity: string | null
+          amount: number
+          base: number
+          formula: string
+          id: number
+          kind: string
+          office_id: string
+          ordinal: number
+          origin: Json
+          partial: boolean
+          period: string
+          rate: number
+          regime: string
+          rule_ref: string
+          simulation_id: string
+          tax: string
+          verified: boolean
+        }
+        Insert: {
+          activity?: string | null
+          amount: number
+          base: number
+          formula: string
+          id?: never
+          kind: string
+          office_id: string
+          ordinal: number
+          origin?: Json
+          partial?: boolean
+          period: string
+          rate: number
+          regime: string
+          rule_ref: string
+          simulation_id: string
+          tax: string
+          verified?: boolean
+        }
+        Update: {
+          activity?: string | null
+          amount?: number
+          base?: number
+          formula?: string
+          id?: never
+          kind?: string
+          office_id?: string
+          ordinal?: number
+          origin?: Json
+          partial?: boolean
+          period?: string
+          rate?: number
+          regime?: string
+          rule_ref?: string
+          simulation_id?: string
+          tax?: string
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "simulation_lines_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "simulation_lines_simulation_id_office_id_fkey"
+            columns: ["simulation_id", "office_id"]
+            isOneToOne: false
+            referencedRelation: "simulations"
+            referencedColumns: ["id", "office_id"]
+          },
+        ]
+      }
+      simulations: {
+        Row: {
+          assumptions: Json
+          assumptions_hash: string
+          case_id: string
+          created_at: string
+          duration_ms: number | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          office_id: string
+          requested_by: string | null
+          result: Json
+          result_hash: string | null
+          rules_hash: string
+          rules_version: string
+          snapshot_id: string
+          snapshot_sha256: string
+          status: string
+        }
+        Insert: {
+          assumptions?: Json
+          assumptions_hash: string
+          case_id: string
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          office_id: string
+          requested_by?: string | null
+          result?: Json
+          result_hash?: string | null
+          rules_hash: string
+          rules_version: string
+          snapshot_id: string
+          snapshot_sha256: string
+          status: string
+        }
+        Update: {
+          assumptions?: Json
+          assumptions_hash?: string
+          case_id?: string
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          office_id?: string
+          requested_by?: string | null
+          result?: Json
+          result_hash?: string | null
+          rules_hash?: string
+          rules_version?: string
+          snapshot_id?: string
+          snapshot_sha256?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "simulations_case_id_office_id_fkey"
+            columns: ["case_id", "office_id"]
+            isOneToOne: false
+            referencedRelation: "tax_cases"
+            referencedColumns: ["id", "office_id"]
+          },
+          {
+            foreignKeyName: "simulations_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "simulations_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "snapshots"
             referencedColumns: ["id"]
           },
         ]
@@ -770,6 +1005,14 @@ export type Database = {
       }
     }
     Functions: {
+      assumption_value_ok: {
+        Args: { p_choices: Json; p_type: string; p_value: Json }
+        Returns: boolean
+      }
+      confirm_assumption: {
+        Args: { p_id: string; p_justification: string; p_value: Json }
+        Returns: undefined
+      }
       enqueue_job: {
         Args: {
           p_key: string
@@ -788,6 +1031,31 @@ export type Database = {
       }
       is_admin: { Args: { p_office: string }; Returns: boolean }
       is_member: { Args: { p_office: string }; Returns: boolean }
+      planning_case: {
+        Args: { p_case_id: string }
+        Returns: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          office_id: string
+          period_end: string
+          period_start: string
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tax_cases"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      request_calculation: { Args: { p_case_id: string }; Returns: undefined }
+      request_planning: { Args: { p_case_id: string }; Returns: undefined }
+      request_simulation_export: {
+        Args: { p_simulation_id: string }
+        Returns: undefined
+      }
       request_xlsx_export: { Args: { p_case_id: string }; Returns: undefined }
       storage_path_office: { Args: { p_name: string }; Returns: string }
       write_audit: {

@@ -77,6 +77,9 @@ export default async function CasePage({
           <StatusBadge status={tc.status} />
           <Link href={`/cases/${id}/review`} className="btn-secondary">Revisar valores</Link>
           <Link href={`/cases/${id}/reconciliation`} className="btn-secondary">Conciliação</Link>
+          {homologated && (
+            <Link href={`/cases/${id}/planning`} className="btn-primary">Planejamento</Link>
+          )}
         </div>
       </div>
 

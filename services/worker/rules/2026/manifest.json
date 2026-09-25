@@ -1,0 +1,14 @@
+{
+  "version": "2026.1.0",
+  "exercicio": 2026,
+  "vigencia": ["2026-01-01", "2026-12-31"],
+  "arquivos": [
+    "simples.json",
+    "presumido.json",
+    "real.json",
+    "encargos.json",
+    "elegibilidade.json",
+    "atividades.json"
+  ],
+  "observacao": "Valores monetários e alíquotas sempre como string decimal. 'verificado': true somente quando conferido na fonte primária."
+}
