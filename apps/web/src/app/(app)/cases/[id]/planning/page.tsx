@@ -2,12 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requestCalculation, startPlanning } from "@/app/(app)/cases/[id]/planning/actions";
+import { requestProjection } from "@/app/(app)/cases/[id]/planning/projection/actions";
 import { AssumptionForm, type AssumptionRow } from "@/components/AssumptionForm";
 import { StatusBadge } from "@/components/StatusBadge";
-import { ASSUMPTION_GROUP_LABEL, formatBRL, formatCompetence, formatDateTime, REGIME_LABEL } from "@/lib/format";
+import { ASSUMPTION_GROUP_LABEL, formatBRL, formatCompetence, formatDateTime, formatPct, REGIME_LABEL } from "@/lib/format";
 import { getSessionContext } from "@/lib/supabase/server";
 
-const GROUP_ORDER = ["atividades", "elegibilidade", "icms_iss", "receitas", "pis_cofins", "real", "folha"];
+const GROUP_ORDER = ["atividades", "elegibilidade", "icms_iss", "receitas", "pis_cofins", "real", "folha", "projecao", "conformidade"];
 
 type SimulationSummary = {
   competences?: string[];
@@ -35,7 +36,7 @@ export default async function PlanningPage({
   if (!tc) notFound();
   const company = tc.companies as { legal_name: string } | null;
 
-  const [{ data: rows }, { data: sims }, { data: jobs }] = await Promise.all([
+  const [{ data: rows }, { data: sims }, { data: jobs }, { data: projections }] = await Promise.all([
     supabase
       .from("assumptions")
       .select("id, key, scope, grp, label, value_type, choices, suggested_value, suggested_origin, value, status, justification, confirmed_at")
@@ -50,15 +51,20 @@ export default async function PlanningPage({
     supabase
       .from("jobs")
       .select("kind, status, last_error, created_at")
-      .in("kind", ["suggest_assumptions", "calculate"])
+      .in("kind", ["suggest_assumptions", "calculate", "project"])
       .contains("payload", { case_id: id })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("projections")
+      .select("id, status, year, recommendation, error_message, created_at, recommendations(status)")
+      .eq("case_id", id)
       .order("created_at", { ascending: false }),
   ]);
 
   const homologated = tc.status === "homologated";
   const running = (jobs ?? []).some((j) => j.status === "queued" || j.status === "running");
   // o worker encerra o cálculo sem simulação quando algo mudou após o pedido (ex.: premissa voltou a pendente)
-  const lastCalc = (jobs ?? []).find((j) => j.kind === "calculate");
+  const lastCalc = (jobs ?? []).find((j) => j.kind === "calculate" || j.kind === "project");
   const calcNote = lastCalc && lastCalc.status !== "queued" && lastCalc.status !== "running" ? lastCalc.last_error : null;
   const assumptions = (rows ?? []) as (AssumptionRow & { grp: string })[];
   const pending = assumptions.filter((a) => a.status !== "confirmed").length;
@@ -123,6 +129,48 @@ export default async function PlanningPage({
               </ul>
             </div>
           ))}
+        </section>
+      )}
+
+      {assumptions.length > 0 && (
+        <section className="card space-y-3" aria-labelledby="proj-title">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 id="proj-title">Projeção 2026 e recomendação</h2>
+              <p className="text-sm text-slate-600">
+                Exercício completo pelo motor (meses realizados, estimados pelo PGDAS-D e projetados pela média ou pelo
+                orçamento), sensibilidade com ponto de virada e recomendação para aprovação do responsável técnico.
+                Premissas pendentes geram uma prévia bloqueada.
+              </p>
+            </div>
+            <form action={requestProjection}>
+              <input type="hidden" name="caseId" value={id} />
+              <button type="submit" className="btn-primary" disabled={!homologated || running}>Projetar 2026</button>
+            </form>
+          </div>
+          {!!projections?.length && (
+            <table className="data-table">
+              <thead><tr><th>Data</th><th>Resultado</th><th>Recomendação</th><th>Fluxo</th><th /></tr></thead>
+              <tbody>
+                {projections.map((p) => {
+                  const rec = (p.recommendation ?? {}) as { status?: string; regime?: string; economia_vs_segundo_pct?: string };
+                  const flow = (p.recommendations as { status: string }[] | { status: string } | null);
+                  const flowStatus = Array.isArray(flow) ? flow[0]?.status : flow?.status;
+                  return (
+                    <tr key={p.id}>
+                      <td className="whitespace-nowrap">{formatDateTime(p.created_at)}</td>
+                      <td>{p.status === "done" ? <StatusBadge status={rec.status ?? "done"} /> : <StatusBadge status="failed" label="Falhou" />}</td>
+                      <td>{p.status === "done"
+                        ? (rec.regime ? `${REGIME_LABEL[rec.regime]}${rec.economia_vs_segundo_pct ? ` (${formatPct(rec.economia_vs_segundo_pct)} abaixo do 2º)` : ""}` : "—")
+                        : p.error_message}</td>
+                      <td>{flowStatus ? <StatusBadge status={flowStatus} /> : "—"}</td>
+                      <td>{p.status === "done" && <Link className="text-brand-700 underline" href={`/cases/${id}/planning/projection/${p.id}`}>Abrir</Link>}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </section>
       )}
 

@@ -373,20 +373,29 @@ export type Database = {
       }
       office_members: {
         Row: {
+          crc: string | null
           created_at: string
+          is_technical_responsible: boolean
           office_id: string
+          professional_name: string | null
           role: Database["public"]["Enums"]["member_role"]
           user_id: string
         }
         Insert: {
+          crc?: string | null
           created_at?: string
+          is_technical_responsible?: boolean
           office_id: string
+          professional_name?: string | null
           role?: Database["public"]["Enums"]["member_role"]
           user_id: string
         }
         Update: {
+          crc?: string | null
           created_at?: string
+          is_technical_responsible?: boolean
           office_id?: string
+          professional_name?: string | null
           role?: Database["public"]["Enums"]["member_role"]
           user_id?: string
         }
@@ -420,6 +429,302 @@ export type Database = {
           settings?: Json
         }
         Relationships: []
+      }
+      projection_lines: {
+        Row: {
+          activity: string | null
+          amount: number
+          base: number
+          formula: string
+          id: number
+          kind: string
+          office_id: string
+          ordinal: number
+          origin: Json
+          partial: boolean
+          period: string
+          projection_id: string
+          rate: number
+          regime: string
+          rule_ref: string
+          tax: string
+          verified: boolean
+        }
+        Insert: {
+          activity?: string | null
+          amount: number
+          base: number
+          formula: string
+          id?: never
+          kind: string
+          office_id: string
+          ordinal: number
+          origin?: Json
+          partial?: boolean
+          period: string
+          projection_id: string
+          rate: number
+          regime: string
+          rule_ref: string
+          tax: string
+          verified?: boolean
+        }
+        Update: {
+          activity?: string | null
+          amount?: number
+          base?: number
+          formula?: string
+          id?: never
+          kind?: string
+          office_id?: string
+          ordinal?: number
+          origin?: Json
+          partial?: boolean
+          period?: string
+          projection_id?: string
+          rate?: number
+          regime?: string
+          rule_ref?: string
+          tax?: string
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projection_lines_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projection_lines_projection_id_office_id_fkey"
+            columns: ["projection_id", "office_id"]
+            isOneToOne: false
+            referencedRelation: "projections"
+            referencedColumns: ["id", "office_id"]
+          },
+        ]
+      }
+      projections: {
+        Row: {
+          assumptions: Json
+          assumptions_hash: string
+          case_id: string
+          created_at: string
+          decision_hash: string
+          decision_version: string
+          duration_ms: number | null
+          engine_runs: number | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          office_id: string
+          recommendation: Json
+          requested_by: string | null
+          result: Json
+          result_hash: string | null
+          rules_hash: string
+          rules_version: string
+          sensitivity: Json
+          snapshot_id: string
+          snapshot_sha256: string
+          status: string
+          threshold: number
+          year: number
+        }
+        Insert: {
+          assumptions?: Json
+          assumptions_hash: string
+          case_id: string
+          created_at?: string
+          decision_hash: string
+          decision_version: string
+          duration_ms?: number | null
+          engine_runs?: number | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          office_id: string
+          recommendation?: Json
+          requested_by?: string | null
+          result?: Json
+          result_hash?: string | null
+          rules_hash: string
+          rules_version: string
+          sensitivity?: Json
+          snapshot_id: string
+          snapshot_sha256: string
+          status: string
+          threshold: number
+          year: number
+        }
+        Update: {
+          assumptions?: Json
+          assumptions_hash?: string
+          case_id?: string
+          created_at?: string
+          decision_hash?: string
+          decision_version?: string
+          duration_ms?: number | null
+          engine_runs?: number | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          office_id?: string
+          recommendation?: Json
+          requested_by?: string | null
+          result?: Json
+          result_hash?: string | null
+          rules_hash?: string
+          rules_version?: string
+          sensitivity?: Json
+          snapshot_id?: string
+          snapshot_sha256?: string
+          status?: string
+          threshold?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projections_case_id_office_id_fkey"
+            columns: ["case_id", "office_id"]
+            isOneToOne: false
+            referencedRelation: "tax_cases"
+            referencedColumns: ["id", "office_id"]
+          },
+          {
+            foreignKeyName: "projections_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projections_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recommendation_events: {
+        Row: {
+          actor: string | null
+          comment: string | null
+          created_at: string
+          event: string
+          id: number
+          office_id: string
+          recommendation_id: string
+        }
+        Insert: {
+          actor?: string | null
+          comment?: string | null
+          created_at?: string
+          event: string
+          id?: never
+          office_id: string
+          recommendation_id: string
+        }
+        Update: {
+          actor?: string | null
+          comment?: string | null
+          created_at?: string
+          event?: string
+          id?: never
+          office_id?: string
+          recommendation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_events_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendation_events_recommendation_id_office_id_fkey"
+            columns: ["recommendation_id", "office_id"]
+            isOneToOne: false
+            referencedRelation: "recommendations"
+            referencedColumns: ["id", "office_id"]
+          },
+        ]
+      }
+      recommendations: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          case_id: string
+          computed_status: string
+          created_at: string
+          elaborated_by: string | null
+          emitted_at: string | null
+          id: string
+          office_id: string
+          pdf_path: string | null
+          pdf_sha256: string | null
+          projection_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          case_id: string
+          computed_status: string
+          created_at?: string
+          elaborated_by?: string | null
+          emitted_at?: string | null
+          id?: string
+          office_id: string
+          pdf_path?: string | null
+          pdf_sha256?: string | null
+          projection_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          case_id?: string
+          computed_status?: string
+          created_at?: string
+          elaborated_by?: string | null
+          emitted_at?: string | null
+          id?: string
+          office_id?: string
+          pdf_path?: string | null
+          pdf_sha256?: string | null
+          projection_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendations_case_id_office_id_fkey"
+            columns: ["case_id", "office_id"]
+            isOneToOne: false
+            referencedRelation: "tax_cases"
+            referencedColumns: ["id", "office_id"]
+          },
+          {
+            foreignKeyName: "recommendations_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendations_projection_id_office_id_fkey"
+            columns: ["projection_id", "office_id"]
+            isOneToOne: false
+            referencedRelation: "projections"
+            referencedColumns: ["id", "office_id"]
+          },
+        ]
       }
       reconciliations: {
         Row: {
@@ -1005,6 +1310,7 @@ export type Database = {
       }
     }
     Functions: {
+      approve_recommendation: { Args: { p_id: string }; Returns: undefined }
       assumption_value_ok: {
         Args: { p_choices: Json; p_type: string; p_value: Json }
         Returns: boolean
@@ -1013,6 +1319,7 @@ export type Database = {
         Args: { p_id: string; p_justification: string; p_value: Json }
         Returns: undefined
       }
+      decision_threshold: { Args: { p_office: string }; Returns: number }
       enqueue_job: {
         Args: {
           p_key: string
@@ -1031,6 +1338,7 @@ export type Database = {
       }
       is_admin: { Args: { p_office: string }; Returns: boolean }
       is_member: { Args: { p_office: string }; Returns: boolean }
+      is_technical_responsible: { Args: { p_office: string }; Returns: boolean }
       planning_case: {
         Args: { p_case_id: string }
         Returns: {
@@ -1050,14 +1358,60 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      recommendation_for_update: {
+        Args: { p_id: string }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          case_id: string
+          computed_status: string
+          created_at: string
+          elaborated_by: string | null
+          emitted_at: string | null
+          id: string
+          office_id: string
+          pdf_path: string | null
+          pdf_sha256: string | null
+          projection_id: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "recommendations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       request_calculation: { Args: { p_case_id: string }; Returns: undefined }
       request_planning: { Args: { p_case_id: string }; Returns: undefined }
+      request_projection: { Args: { p_case_id: string }; Returns: undefined }
+      request_report: { Args: { p_id: string }; Returns: undefined }
       request_simulation_export: {
         Args: { p_simulation_id: string }
         Returns: undefined
       }
       request_xlsx_export: { Args: { p_case_id: string }; Returns: undefined }
+      return_recommendation: {
+        Args: { p_comment: string; p_id: string }
+        Returns: undefined
+      }
+      set_decision_threshold: {
+        Args: { p_office: string; p_threshold: number }
+        Returns: undefined
+      }
+      set_technical_responsible: {
+        Args: {
+          p_crc: string
+          p_flag: boolean
+          p_name: string
+          p_office: string
+          p_user: string
+        }
+        Returns: undefined
+      }
       storage_path_office: { Args: { p_name: string }; Returns: string }
+      submit_recommendation: { Args: { p_id: string }; Returns: undefined }
       write_audit: {
         Args: {
           p_after: Json

@@ -1,5 +1,11 @@
-import { inviteAnalyst, updateTolerance, upsertMapping } from "@/app/(app)/admin/actions";
-import { DOC_TYPE_LABEL, formatBRL } from "@/lib/format";
+import {
+  inviteAnalyst,
+  setTechnicalResponsible,
+  updateThreshold,
+  updateTolerance,
+  upsertMapping,
+} from "@/app/(app)/admin/actions";
+import { DOC_TYPE_LABEL, formatBRL, formatPct } from "@/lib/format";
 import { MAPPING_TARGETS } from "@/lib/schemas";
 import { listUserEmails } from "@/lib/supabase/admin";
 import { getSessionContext } from "@/lib/supabase/server";
@@ -20,7 +26,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   if (!isAdmin) return <p className="alert-error">Acesso restrito ao administrador do escritório.</p>;
 
   const [{ data: members }, { data: officeRow }, { data: mappings }] = await Promise.all([
-    supabase.from("office_members").select("user_id, role, created_at").eq("office_id", office!.office_id),
+    supabase
+      .from("office_members")
+      .select("user_id, role, created_at, is_technical_responsible, professional_name, crc")
+      .eq("office_id", office!.office_id),
     supabase.from("offices").select("name, settings").eq("id", office!.office_id).single(),
     supabase
       .from("account_mappings")
@@ -31,7 +40,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   // E-mails ficam em auth.users (fora da RLS): leitura via chave de serviço, somente para o admin.
   const emails = await listUserEmails();
-  const tolerance = (officeRow?.settings as { tolerance_brl?: number } | null)?.tolerance_brl ?? 1;
+  const settings = (officeRow?.settings ?? {}) as { tolerance_brl?: number; decision_threshold?: number };
+  const tolerance = settings.tolerance_brl ?? 1;
+  const threshold = settings.decision_threshold ?? 0.05;
   const code = (target: string, docType: string) =>
     mappings?.find((m) => m.target === target && m.doc_type === docType)?.account_code ?? "";
 
@@ -39,7 +50,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     <div className="space-y-6">
       <div>
         <h1>Administração — {officeRow?.name}</h1>
-        <p className="text-sm text-slate-600">Membros, tolerância de conciliação e contas-alvo do plano de contas Alterdata.</p>
+        <p className="text-sm text-slate-600">
+          Membros e responsáveis técnicos, tolerância de conciliação, limiar da recomendação e contas-alvo do plano Alterdata.
+        </p>
       </div>
       {erro && <p role="alert" className="alert-error">{erro}</p>}
       {ok && <p role="status" className="alert-success">{ok}</p>}
@@ -47,12 +60,32 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <section className="card space-y-3" aria-labelledby="members-title">
         <h2 id="members-title">Membros</h2>
         <table className="data-table">
-          <thead><tr><th>E-mail</th><th>Papel</th></tr></thead>
+          <thead><tr><th>E-mail</th><th>Papel</th><th>Responsável técnico (aprova recomendações)</th></tr></thead>
           <tbody>
             {(members ?? []).map((m) => (
               <tr key={m.user_id}>
                 <td>{emails.get(m.user_id) ?? m.user_id}</td>
                 <td>{m.role === "admin" ? "Administrador" : "Analista"}</td>
+                <td>
+                  <form action={setTechnicalResponsible} className="flex flex-wrap items-center gap-2">
+                    <input type="hidden" name="userId" value={m.user_id} />
+                    <input type="hidden" name="flag" value={m.is_technical_responsible ? "false" : "true"} />
+                    {m.is_technical_responsible ? (
+                      <>
+                        <span className="text-sm">{m.professional_name} · CRC {m.crc}</span>
+                        <button type="submit" className="btn-secondary px-2 py-1 text-xs">Remover</button>
+                      </>
+                    ) : (
+                      <>
+                        <label className="sr-only" htmlFor={`n-${m.user_id}`}>Nome profissional</label>
+                        <input id={`n-${m.user_id}`} name="name" className="input max-w-48 py-1" placeholder="Nome profissional" defaultValue={m.professional_name ?? ""} />
+                        <label className="sr-only" htmlFor={`c-${m.user_id}`}>CRC</label>
+                        <input id={`c-${m.user_id}`} name="crc" className="input max-w-36 py-1" placeholder="CRC (ex.: SP-123456/O-7)" defaultValue={m.crc ?? ""} />
+                        <button type="submit" className="btn-secondary px-2 py-1 text-xs">Marcar</button>
+                      </>
+                    )}
+                  </form>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -76,6 +109,22 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <div>
             <label className="label" htmlFor="tolerance">Nova tolerância (R$)</label>
             <input id="tolerance" name="tolerance" className="input" inputMode="decimal" defaultValue={String(tolerance)} required />
+          </div>
+          <button type="submit" className="btn-primary">Salvar</button>
+        </form>
+      </section>
+
+      <section className="card space-y-3" aria-labelledby="thr-title">
+        <h2 id="thr-title">Limiar da recomendação</h2>
+        <p className="text-sm text-slate-600">
+          Se a diferença entre os dois regimes mais baratos for menor que este percentual do custo do vencedor, a recomendação
+          sai como <strong>resultado inconclusivo</strong>. Atual: <strong>{formatPct(threshold)}</strong>.
+        </p>
+        <form action={updateThreshold} className="flex items-end gap-2">
+          <div>
+            <label className="label" htmlFor="threshold">Novo limiar (%)</label>
+            <input id="threshold" name="threshold" className="input" inputMode="decimal"
+              defaultValue={String(Number(threshold) * 100).replace(".", ",")} required />
           </div>
           <button type="submit" className="btn-primary">Salvar</button>
         </form>

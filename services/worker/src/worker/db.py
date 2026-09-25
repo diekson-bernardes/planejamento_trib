@@ -352,3 +352,119 @@ def get_simulation_lines(conn: psycopg.Connection, simulation_id, office_id) -> 
         "from simulation_lines where simulation_id = %s and office_id = %s order by ordinal",
         (simulation_id, office_id),
     ).fetchall()
+
+
+# ---------------------------------------------------------------------- ciclo 3: decisão
+def load_decision_threshold(conn: psycopg.Connection, office_id) -> Decimal:
+    row = conn.execute(
+        "select coalesce((settings ->> 'decision_threshold')::numeric, 0.05) as t from offices where id = %s",
+        (office_id,),
+    ).fetchone()
+    return Decimal(str(row["t"])) if row else Decimal("0.05")
+
+
+def find_projection(conn: psycopg.Connection, case_id, office_id, snapshot_sha: str, assumptions_hash: str,
+                    rules_hash: str, decision_hash: str, threshold: Decimal) -> dict[str, Any] | None:
+    return conn.execute(
+        "select id, status from projections where case_id = %s and office_id = %s and snapshot_sha256 = %s "
+        "and assumptions_hash = %s and rules_hash = %s and decision_hash = %s and threshold = %s",
+        (case_id, office_id, snapshot_sha, assumptions_hash, rules_hash, decision_hash, threshold),
+    ).fetchone()
+
+
+def save_projection(conn: psycopg.Connection, *, case_id, office_id, snapshot_id, snapshot_sha: str,
+                    assumptions_hash: str, rules_version: str, rules_hash: str, decision_version: str,
+                    decision_hash: str, threshold: Decimal, year: int, status: str, result: dict,
+                    sensitivity: list, recommendation: dict, assumptions: list, result_hash: str | None,
+                    lines: list[dict], engine_runs: int | None, duration_ms: int | None, requested_by=None,
+                    error_code: str | None = None, error_message: str | None = None):
+    """Grava projeção imutável + linhas e, quando concluída, a recomendação em rascunho (elaborada pelo solicitante)."""
+    with conn.transaction():
+        row = conn.execute(
+            """
+            insert into projections (office_id, case_id, snapshot_id, snapshot_sha256, assumptions_hash, rules_version,
+                                     rules_hash, decision_version, decision_hash, threshold, year, status, result,
+                                     sensitivity, recommendation, assumptions, result_hash, error_code, error_message,
+                                     engine_runs, duration_ms, requested_by)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            on conflict (case_id, snapshot_sha256, assumptions_hash, rules_hash, decision_hash, threshold) do nothing
+            returning id
+            """,
+            (office_id, case_id, snapshot_id, snapshot_sha, assumptions_hash, rules_version, rules_hash,
+             decision_version, decision_hash, threshold, year, status, Jsonb(result), Jsonb(sensitivity),
+             Jsonb(recommendation), Jsonb(assumptions), result_hash, error_code, error_message, engine_runs,
+             duration_ms, requested_by),
+        ).fetchone()
+        if row is None:
+            return None
+        with conn.cursor() as cur:
+            cur.executemany(
+                "insert into projection_lines (office_id, projection_id, ordinal, regime, period, tax, kind, base, rate, "
+                "amount, formula, rule_ref, origin, activity, partial, verified) "
+                "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                [(office_id, row["id"], i, l["regime"], l["period"], l["tax"], l["kind"], l["base"], l["rate"],
+                  l["amount"], l["formula"], l["rule_ref"], Jsonb(l["origin"]), l["activity"], l["partial"],
+                  l["verified"]) for i, l in enumerate(lines)],
+            )
+        if status == "done":
+            rec = conn.execute(
+                "insert into recommendations (office_id, case_id, projection_id, computed_status, elaborated_by) "
+                "values (%s, %s, %s, %s, %s) returning id",
+                (office_id, case_id, row["id"], recommendation["status"], requested_by),
+            ).fetchone()
+            conn.execute(
+                "insert into recommendation_events (office_id, recommendation_id, event, actor) values (%s, %s, 'created', %s)",
+                (office_id, rec["id"], requested_by),
+            )
+        return row["id"]
+
+
+def get_report_data(conn: psycopg.Connection, recommendation_id, office_id) -> dict[str, Any] | None:
+    """Recomendação + projeção + dossiê + empresa + responsável técnico que aprovou (dados do PDF)."""
+    rec = conn.execute(
+        "select r.*, p.year, p.result, p.sensitivity, p.recommendation as computed, p.assumptions, p.rules_version, "
+        "p.rules_hash, p.decision_version, p.decision_hash, p.threshold, p.result_hash, p.snapshot_sha256, "
+        "p.created_at as projected_at, c.period_start, c.period_end, co.legal_name, co.cnpj, o.name as office_name "
+        "from recommendations r join projections p on p.id = r.projection_id and p.office_id = r.office_id "
+        "join tax_cases c on c.id = r.case_id and c.office_id = r.office_id "
+        "join companies co on co.id = c.company_id join offices o on o.id = r.office_id "
+        "where r.id = %s and r.office_id = %s",
+        (recommendation_id, office_id),
+    ).fetchone()
+    if rec is None:
+        return None
+    rec["approver"] = conn.execute(
+        "select professional_name, crc from office_members where office_id = %s and user_id = %s",
+        (office_id, rec["approved_by"]),
+    ).fetchone() if rec["approved_by"] else None
+    rec["events"] = conn.execute(
+        "select event, actor, comment, created_at from recommendation_events where recommendation_id = %s "
+        "and office_id = %s order by created_at, id",
+        (recommendation_id, office_id),
+    ).fetchall()
+    rec["lines"] = conn.execute(
+        "select regime, period, tax, kind, amount, formula, origin from projection_lines where projection_id = %s "
+        "and office_id = %s order by ordinal",
+        (rec["projection_id"], office_id),
+    ).fetchall()
+    return rec
+
+
+def mark_emitted(conn: psycopg.Connection, recommendation_id, office_id, path: str, sha256: str) -> bool:
+    with conn.transaction():
+        row = conn.execute(
+            "update recommendations set status = 'emitida', pdf_path = %s, pdf_sha256 = %s, emitted_at = now() "
+            "where id = %s and office_id = %s and status = 'aprovada' returning id",
+            (path, sha256, recommendation_id, office_id),
+        ).fetchone()
+        if row is None:
+            return False
+        conn.execute(
+            "insert into recommendation_events (office_id, recommendation_id, event) values (%s, %s, 'emitted')",
+            (office_id, recommendation_id),
+        )
+        return True
+
+
+def report_path(office_id: str, case_id: str, recommendation_id: str) -> str:
+    return f"{office_id}/{case_id}/reports/{recommendation_id}.pdf"

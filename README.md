@@ -1,4 +1,4 @@
-# Planejamento Tributário — Importação, Conciliação (ciclo 1) e Motor Tributário (ciclo 2)
+# Planejamento Tributário — Importação e Conciliação (ciclo 1), Motor Tributário (ciclo 2) e Decisão (ciclo 3)
 
 Aplicativo web SaaS multi-escritório que importa PDFs do **PGDAS-D** e dos relatórios **Alterdata**
 (Resumo Geral da Folha, DRE e Balancete Analítico), extrai todas as linhas com página e posição de
@@ -36,6 +36,33 @@ regras ficam gravados em cada simulação. Mudança de regra = nova versão no `
 (Anexos I–V) foram transcritas do DOU de 28/10/2016 (LC 155/2016); regras marcadas `verificado: false` aparecem
 com alerta na memória até a revisão contábil. Casos dourados: DAS de 06–08/2026 igual ao PGDAS-D, exemplos da
 `kb/` e `services/worker/tests/golden/motor_202608.json` (aprovado pelo responsável de negócio).
+
+## Decisão tributária (ciclo 3)
+
+Na mesma tela de planejamento, **Projetar 2026** (job `project`) monta o exercício inteiro e roda o motor do ciclo 2
+sem alteração sobre um snapshot sintético:
+
+- **meses realizados** (competências completas) entram exatamente como homologados;
+- **meses estimados** (antes do primeiro completo): receita pelas séries do PGDAS-D; lucro, créditos, ICMS/ISS e
+  outras receitas em proporção à receita dos meses completos;
+- **meses projetados** (depois do último completo): média simples, ou o **orçamento** informado nas premissas
+  `projecao.receita`, `projecao.margem` e `projecao.folha` (alteração com justificativa, como qualquer premissa).
+
+Em seguida:
+
+1. **Sensibilidade** (grade de 11 pontos + bisseção) para receita, margem, folha, créditos de PIS/Cofins e ICMS/ISS:
+   ponto de virada (ou "sem virada"), novo líder, distância, robustez e **limite jurídico** quando a elegibilidade muda.
+2. **Recomendação**: `recomendado` (diferença ≥ limiar do escritório, padrão 5%), `inconclusivo` (abaixo) ou `bloqueado`
+   (premissa pendente ou dado crítico ausente, com prévia). Mostra fatores, economia vs. segundo colocado e vs. regime
+   atual, carga consumo/renda/folha e o custo de conformidade (exibido à parte, fora do ranking).
+3. **Fluxo**: rascunho → em revisão → aprovada → emitida. Só o **responsável técnico** (marcado pelo admin com nome e
+   CRC) aprova, e nunca a própria elaboração; devolução exige comentário; premissa alterada devolve para rascunho.
+4. **PDF executivo** (job `emit_report`, ReportLab em modo reprodutível) no formato do SPTE + seções do PRD, gravado em
+   `<escritório>/<dossiê>/reports/` com SHA-256; a recomendação emitida é imutável.
+
+A política de decisão (intervalos, robustez, limiar padrão, grupos de carga, ressalvas) fica em
+`services/worker/rules/decisao.json`, com versão e hash próprios gravados em cada projeção — separada das regras
+tributárias. Golden: `services/worker/tests/golden/decisao_2026.json` (aprovado pelo responsável de negócio).
 
 ## Pré-requisitos
 

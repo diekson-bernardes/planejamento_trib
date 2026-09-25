@@ -54,6 +54,14 @@ export const STATUS: Record<string, { label: string; tone: Tone }> = {
   queued: { label: "Na fila", tone: "neutral" },
   running: { label: "Executando", tone: "info" },
   done: { label: "Concluído", tone: "success" },
+  // recomendação (ciclo 3)
+  rascunho: { label: "Rascunho", tone: "neutral" },
+  em_revisao: { label: "Em revisão", tone: "info" },
+  aprovada: { label: "Aprovada", tone: "success" },
+  emitida: { label: "Emitida", tone: "success" },
+  recomendado: { label: "Recomendado", tone: "success" },
+  inconclusivo: { label: "Resultado inconclusivo", tone: "warning" },
+  bloqueado: { label: "Bloqueado (prévia incompleta)", tone: "danger" },
 };
 
 export const RULE_LABEL: Record<string, string> = {
@@ -116,12 +124,43 @@ export const ASSUMPTION_GROUP_LABEL: Record<string, string> = {
   real: "Lucro Real",
   folha: "Encargos da folha",
   elegibilidade: "Elegibilidade",
+  projecao: "Projeção do exercício (orçamento opcional)",
+  conformidade: "Custo de conformidade (exibido à parte)",
 };
+
+export const MONTH_ORIGIN: Record<string, { label: string; short: string }> = {
+  realizado: { label: "Realizado (documentos homologados)", short: "R" },
+  estimado: { label: "Estimado (receita do PGDAS-D, demais valores proporcionais)", short: "E" },
+  projetado: { label: "Projetado (média dos meses completos)", short: "P" },
+  orcamento: { label: "Orçamento informado", short: "O" },
+};
+
+export const ROBUSTNESS: Record<string, { label: string; tone: Tone }> = {
+  robusta: { label: "Robusta", tone: "success" },
+  atencao: { label: "Atenção", tone: "warning" },
+  fragil: { label: "Frágil", tone: "danger" },
+};
+
+export const EVENT_LABEL: Record<string, string> = {
+  created: "Elaborada",
+  submitted: "Enviada para revisão",
+  returned: "Devolvida",
+  approved: "Aprovada",
+  emission_requested: "Emissão solicitada",
+  emitted: "Emitida",
+  reset_by_assumption: "Voltou a rascunho (premissa alterada)",
+};
+
+/** "0.0591" → "5,91%" */
+export function formatPct(value: number | string | null | undefined, places = 2): string {
+  if (value === null || value === undefined || value === "") return "—";
+  return `${(Number(value) * 100).toFixed(places).replace(".", ",")}%`;
+}
 
 /** "0.02" → "2,00%" quando é percentual; valores monetários em BRL; demais em texto. */
 export function formatAssumption(value: unknown, type: string): string {
   if (value === null || value === undefined) return "—";
-  if (type === "percent") return `${(Number(value) * 100).toFixed(2).replace(".", ",")}%`;
+  if (type === "percent" || type === "ratio") return formatPct(String(value));
   if (type === "decimal") return formatBRL(String(value));
   if (type === "boolean") return value ? "Sim" : "Não";
   if (type === "taxes") return (value as string[]).length ? (value as string[]).map((t) => t.toUpperCase()).join(", ") : "nenhum";

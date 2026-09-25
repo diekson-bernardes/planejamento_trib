@@ -61,10 +61,10 @@ if (!run("Supabase local em execução", "npx", ["supabase", "status"], { quiet:
 
 // 2. Etapas do gate.
 const steps = [
-  ["Worker: pytest (golden, conciliação, pipeline, desempenho)", python,
+  ["Worker: pytest (goldens, conciliação, motor, projeção e decisão, pipeline, desempenho)", python,
     ["-m", "pytest", "services/worker/tests", "-q", "-p", "no:cacheprovider"],
     { env: { VERIFY_STRICT: "1", SAMPLES_DIR: samplesDir } }],
-  ["Banco: pgTAP (RLS e homologação)", "npx", ["supabase", "test", "db"], {}],
+  ["Banco: pgTAP (RLS, homologação, motor e fluxo de aprovação)", "npx", ["supabase", "test", "db"], {}],
   ["Web: typecheck", "npm", ["run", "typecheck", "--workspace", "apps/web"], {}],
   ["Web: vitest", "npm", ["run", "test", "--workspace", "apps/web"], {}],
 ];

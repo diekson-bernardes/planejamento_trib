@@ -3,7 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { firstIssue, inviteSchema, mappingSchema, toleranceSchema } from "@/lib/schemas";
+import {
+  firstIssue,
+  inviteSchema,
+  mappingSchema,
+  technicalResponsibleSchema,
+  thresholdSchema,
+  toleranceSchema,
+} from "@/lib/schemas";
 import { createAdminClient, listUserEmails } from "@/lib/supabase/admin";
 import { getSessionContext } from "@/lib/supabase/server";
 
@@ -88,4 +95,41 @@ export async function upsertMapping(formData: FormData) {
   if (error) back("erro", error.message);
   revalidatePath("/admin");
   back("ok", "Mapeamento salvo.");
+}
+
+/** Limiar de "resultado inconclusivo" (percentual informado na tela → fração). */
+export async function updateThreshold(formData: FormData) {
+  const { supabase, office } = await requireAdmin();
+  const raw = String(formData.get("threshold") ?? "").replace(",", ".").trim();
+  const parsed = thresholdSchema.safeParse({ threshold: raw === "" ? NaN : Number(raw) / 100 });
+  if (!parsed.success) back("erro", raw === "" ? "Informe o limiar." : firstIssue(parsed.error));
+  const { error } = await supabase.rpc("set_decision_threshold", {
+    p_office: office.office_id,
+    p_threshold: parsed.data.threshold,
+  });
+  if (error) back("erro", error.message);
+  revalidatePath("/admin");
+  back("ok", "Limiar atualizado. Vale para as próximas projeções.");
+}
+
+/** Marca/desmarca membro como responsável técnico (nome profissional e CRC obrigatórios ao marcar). */
+export async function setTechnicalResponsible(formData: FormData) {
+  const { supabase, office } = await requireAdmin();
+  const parsed = technicalResponsibleSchema.safeParse({
+    userId: formData.get("userId"),
+    flag: formData.get("flag") === "true",
+    name: String(formData.get("name") ?? ""),
+    crc: String(formData.get("crc") ?? ""),
+  });
+  if (!parsed.success) back("erro", firstIssue(parsed.error));
+  const { error } = await supabase.rpc("set_technical_responsible", {
+    p_office: office.office_id,
+    p_user: parsed.data.userId,
+    p_flag: parsed.data.flag,
+    p_name: parsed.data.name ?? "",
+    p_crc: parsed.data.crc ?? "",
+  });
+  if (error) back("erro", error.message);
+  revalidatePath("/admin");
+  back("ok", parsed.data.flag ? "Responsável técnico registrado." : "Marcação de responsável técnico removida.");
 }

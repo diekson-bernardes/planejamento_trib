@@ -161,6 +161,39 @@ def suggest(view: SnapshotView, rules: RuleSet, confirmed: "Assumptions | None" 
         for dec in rules.elegibilidade[regime]["declaracoes"]:
             out.append(Suggestion(dec["chave"], CASE, "elegibilidade", dec["pergunta"], "choice",
                                   "nao_informado", {"source": "padrao"}, choices=DECLARATION_CHOICES))
+    out += _projection_suggestions(view, comps)
+    return out
+
+
+def _projection_suggestions(view: SnapshotView, comps: list[str]) -> list[Suggestion]:
+    """Orçamento dos meses do exercício posteriores à última competência completa (sugerido = média) e
+    custo anual de conformidade por regime (exibido à parte, não entra no ranking)."""
+    from worker.engine.projection import month_facts, year_months   # projection importa este módulo
+
+    if not comps:
+        return []
+    facts = [month_facts(view, c) for c in comps]
+    receita = sum((f.receita for f in facts), ZERO)
+    if not receita:
+        return []
+    n = Decimal(len(facts))
+    media = {"receita": receita / n, "folha": sum((f.empregados for f in facts), ZERO) / n,
+             "margem": sum((f.margem * f.receita for f in facts), ZERO) / receita}
+    origin = {"source": "snapshot", "note": "média dos meses completos " + ", ".join(comps), "competences": comps}
+    out = []
+    for comp in (m for m in year_months(int(comps[-1][:4])) if m > comps[-1]):
+        scope = comp_scope(comp)
+        out.append(Suggestion("projecao.receita", scope, "projecao", f"Receita projetada ({comp}) — orçamento opcional",
+                              "decimal", _dec(media["receita"]), origin))
+        out.append(Suggestion("projecao.margem", scope, "projecao",
+                              f"Margem antes de IRPJ/CSLL projetada ({comp}) — fração da receita",
+                              "ratio", str(media["margem"].quantize(Decimal("0.0001"))), origin))
+        out.append(Suggestion("projecao.folha", scope, "projecao", f"Folha (base de empregados) projetada ({comp})",
+                              "decimal", _dec(media["folha"]), origin))
+    for regime, name in (("SIMPLES", "Simples Nacional"), ("PRESUMIDO", "Lucro Presumido"), ("REAL", "Lucro Real")):
+        out.append(Suggestion("conformidade.custo_anual", "regime:" + regime, "conformidade",
+                              f"Custo anual de conformidade — {name} (exibido à parte, não altera o ranking)",
+                              "decimal", "0.00", {"source": "padrao", "note": "informar honorários, obrigações e sistemas"}))
     return out
 
 

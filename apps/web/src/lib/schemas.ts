@@ -107,3 +107,27 @@ export const confirmAssumptionSchema = z
     (v) => JSON.stringify(v.value) === JSON.stringify(v.suggested) || (v.justification ?? "").length >= 5,
     { message: "Justifique (mín. 5 caracteres) ao alterar o valor sugerido" },
   );
+
+// ------------------------------------------------------------------ ciclo 3: decisão
+/** Devolução ao elaborador: comentário obrigatório (o banco revalida). */
+export const returnRecommendationSchema = z.object({
+  recommendationId: z.uuid(),
+  comment: z.string().trim().min(5, "Comentário obrigatório (mín. 5 caracteres) ao devolver"),
+});
+
+/** Marcação de responsável técnico pelo admin: nome profissional e CRC obrigatórios quando marcado. */
+export const technicalResponsibleSchema = z
+  .object({
+    userId: z.uuid(),
+    flag: z.boolean(),
+    name: z.string().trim().optional(),
+    crc: z.string().trim().optional(),
+  })
+  .refine((v) => !v.flag || ((v.name ?? "").length >= 3 && (v.crc ?? "").length >= 4), {
+    message: "Informe nome profissional (mín. 3) e CRC (mín. 4) do responsável técnico",
+  });
+
+/** Limiar de "resultado inconclusivo": fração do custo do regime vencedor, entre 0 e 1 (exclusive). */
+export const thresholdSchema = z.object({
+  threshold: z.number().gt(0, "O limiar deve ser maior que 0").lt(1, "O limiar deve ser menor que 1 (100%)"),
+});

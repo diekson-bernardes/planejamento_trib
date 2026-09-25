@@ -1,0 +1,45 @@
+{
+  "dominio": "decisao",
+  "versao": "2026.1.0",
+  "exercicio": 2026,
+  "descricao": "Política de decisão do planejamento (não é legislação): projeção, sensibilidade, robustez, limiar e grupos de carga",
+  "limiar_padrao": "0.05",
+  "robustez": {
+    "robusta_acima": "0.20",
+    "fragil_abaixo": "0.05",
+    "fonte": "kb/planejamento-comparativo/patterns/encontrar-ponto-de-virada.md (faixas sugeridas)"
+  },
+  "projecao": {
+    "metodo_meses_futuros": "media_simples",
+    "campos_proporcionais_a_receita": [
+      "icms_regime_normal",
+      "iss_regime_normal",
+      "pis_cofins_creditos_base",
+      "pis_cofins_exclusoes",
+      "outras_receitas",
+      "real.adicoes",
+      "real.exclusoes"
+    ]
+  },
+  "sensibilidade": {
+    "busca": {"pontos_grade": 11, "iteracoes_bissecao": 12, "precisao_relativa": "0.001"},
+    "variaveis": [
+      {"chave": "receita", "rotulo": "Receita anual", "tipo": "multiplicador", "de": "0.50", "ate": "1.50"},
+      {"chave": "margem", "rotulo": "Margem antes de IRPJ/CSLL", "tipo": "absoluto", "de": "0.00", "ate": "0.40"},
+      {"chave": "folha", "rotulo": "Folha / receita", "tipo": "multiplicador", "de": "0.50", "ate": "2.00"},
+      {"chave": "creditos", "rotulo": "Créditos de PIS/Cofins", "tipo": "multiplicador", "de": "0.00", "ate": "2.00"},
+      {"chave": "icms_iss", "rotulo": "ICMS/ISS no regime normal", "tipo": "multiplicador", "de": "0.00", "ate": "2.00"}
+    ]
+  },
+  "carga": {
+    "consumo": ["pis", "cofins", "icms", "iss", "ipi"],
+    "renda": ["irpj", "adicional_irpj", "csll"],
+    "folha": ["cpp", "rat", "terceiros"]
+  },
+  "ressalvas": [
+    "Comparação do exercício de 2026 com as regras vigentes em 2026 (versão das regras indicada no relatório). A partir de 2027 valem as regras de transição da Reforma Tributária (CBS/IBS), ainda não calculadas por este relatório.",
+    "Os meses sem documentos completos foram estimados: receita pelas séries do PGDAS-D e demais valores em proporção à receita dos meses completos; os meses futuros usam a média dos meses completos ou o orçamento informado.",
+    "O custo de conformidade é exibido separadamente e não altera a ordem dos regimes.",
+    "Recomendação sujeita à revisão e aprovação do responsável técnico; não substitui a análise jurídica de elegibilidade."
+  ]
+}
