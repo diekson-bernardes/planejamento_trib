@@ -1,7 +1,12 @@
 """Configuração do worker, lida exclusivamente de variáveis de ambiente."""
 import os
+from pathlib import Path
 
 from pydantic import BaseModel, Field
+
+
+# services/worker/rules (repositório); na imagem Docker, RULES_DIR=/app/rules
+DEFAULT_RULES_DIR = Path(__file__).resolve().parents[2] / "rules"
 
 
 class Settings(BaseModel):
@@ -12,6 +17,8 @@ class Settings(BaseModel):
     poll_seconds: float = Field(default=2.0, gt=0)
     max_attempts: int = Field(default=3, ge=1)
     lease_seconds: int = Field(default=300, ge=10)
+    rules_dir: str = str(DEFAULT_RULES_DIR)
+    rules_exercise: str = "2026"
 
 
 def load_settings() -> Settings:
@@ -25,4 +32,6 @@ def load_settings() -> Settings:
         poll_seconds=float(os.environ.get("WORKER_POLL_SECONDS", "2")),
         max_attempts=int(os.environ.get("WORKER_MAX_ATTEMPTS", "3")),
         lease_seconds=int(os.environ.get("WORKER_LEASE_SECONDS", "300")),
+        rules_dir=os.environ.get("RULES_DIR", str(DEFAULT_RULES_DIR)),
+        rules_exercise=os.environ.get("RULES_EXERCISE", "2026"),
     )

@@ -70,3 +70,28 @@ describe("upload e tolerância", () => {
     expect(toleranceSchema.safeParse({ tolerance: 1 }).success).toBe(true);
   });
 });
+
+describe("confirmação de premissa (AT-104)", () => {
+  it("dispensa justificativa quando confirma o valor sugerido", async () => {
+    const { confirmAssumptionSchema } = await import("@/lib/schemas");
+    expect(confirmAssumptionSchema.safeParse({ assumptionId: uuid, value: "0.02", suggested: "0.02" }).success).toBe(true);
+    expect(
+      confirmAssumptionSchema.safeParse({ assumptionId: uuid, value: ["icms"], suggested: ["icms"] }).success,
+    ).toBe(true);
+  });
+
+  it("exige justificativa ao alterar o valor sugerido", async () => {
+    const { confirmAssumptionSchema } = await import("@/lib/schemas");
+    expect(confirmAssumptionSchema.safeParse({ assumptionId: uuid, value: "0.03", suggested: "0.02" }).success).toBe(false);
+    expect(
+      confirmAssumptionSchema.safeParse({ assumptionId: uuid, value: "0.03", suggested: "0.02", justification: "CNAE grave" }).success,
+    ).toBe(true);
+  });
+
+  it("aceita perfil de atividade e declaração", async () => {
+    const { confirmAssumptionSchema } = await import("@/lib/schemas");
+    const profile = { anexo: "III", presumido: "servicos_gerais", cumulativo_no_real: false, fator_r: true };
+    expect(confirmAssumptionSchema.safeParse({ assumptionId: uuid, value: profile, suggested: null, justification: "Serviço de engenharia" }).success).toBe(true);
+    expect(confirmAssumptionSchema.safeParse({ assumptionId: uuid, value: "nao", suggested: "nao_informado" }).success).toBe(false);
+  });
+});

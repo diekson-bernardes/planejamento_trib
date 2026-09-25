@@ -15,7 +15,7 @@ SAMPLE_FILES = {
     "pgdas_202606": "1.PGDASD-DECLARACAO-37704456202606001.pdf",
     "pgdas_202607": "1.PGDASD-DECLARACAO-37704456202607001.pdf",
     "pgdas_202608": "1.PGDASD-DECLARACAO-37704456202608001.pdf",
-    "folha_202608": "2.Resumo da Folha.pdf",
+    "folha_202608": "2.Resumo da Folha 08.pdf",
     "dre_202608": "3.DRE.pdf",
     "balancete_202608": "Balancete.pdf",
 }
@@ -61,6 +61,63 @@ def sample():
     return load
 
 
+def build_snapshot_content(load, names=None) -> dict:
+    """Conteúdo de snapshot no mesmo formato de `homologate_case`, a partir das amostras (sem banco)."""
+    from worker.pipeline import parse_document
+
+    files, values, validations = [], [], []
+    for name in names or SAMPLE_FILES:
+        result, checks = parse_document(load(name))
+        file_id = "file-" + name
+        files.append({"id": file_id, "original_name": SAMPLE_FILES[name], "doc_type": result.doc_type.value,
+                      "competence": result.competence + "-01", "parser_version": result.parser_version})
+        for v in result.values:
+            values.append({
+                "id": f"{file_id}-{v.ordinal}", "file_id": file_id, "ordinal": v.ordinal,
+                "doc_type": result.doc_type.value, "competence": v.competence + "-01", "section": v.section,
+                "field_key": v.field_key, "label": v.label, "account_code": v.account_code, "column": v.column,
+                "value": v.value, "original_value": v.value, "adjusted": False, "nature": v.nature,
+                "page": v.page, "bbox": list(v.bbox),
+            })
+        validations += [{"file_id": file_id, "rule": c.rule, "status": c.status} for c in checks]
+    return {"schema_version": 1, "company": {"cnpj": SAMPLE_CNPJ}, "files": files, "values": values,
+            "validations": validations, "reconciliations": []}
+
+
+def accepted_assumptions(view, rules, overrides: dict | None = None, extra_months: tuple = ()):
+    """Premissas sugeridas aceitas como estão (+ sobrescritas por (key, scope)).
+
+    `extra_months` inclui perfis de atividade de competências que não são completas (para recalcular o
+    Simples de meses só com PGDAS-D)."""
+    from worker.engine.activities import declared_zero_taxes, match_profile
+    from worker.engine.assumptions import Assumptions, confirm_all_suggested, suggest
+
+    rows = confirm_all_suggested(suggest(view, rules))
+    for comp in extra_months:
+        for act in view.activities(comp):
+            profile, _ = match_profile(act.description, rules)
+            rows.append({"key": "atividade.perfil", "scope": "atividade:" + act.key, "value": profile.as_value()})
+            rows.append({"key": "atividade.tributos_zerados", "scope": "atividade:" + act.key,
+                         "value": declared_zero_taxes(act, rules)})
+    by_key = {(r["key"], r["scope"]): r for r in rows}
+    for (key, scope), value in (overrides or {}).items():
+        by_key[(key, scope)] = {"key": key, "scope": scope, "value": value}
+    return Assumptions(list(by_key.values()))
+
+
+@pytest.fixture(scope="session")
+def snapshot_content(sample):
+    return build_snapshot_content(sample)
+
+
+@pytest.fixture(scope="session")
+def rules():
+    from worker.config import load_settings
+    from worker.engine.rules import load_rules
+
+    return load_rules(load_settings().rules_dir, "2026")
+
+
 @pytest.fixture(scope="session")
 def golden():
     def load(name: str) -> dict:
@@ -72,6 +129,7 @@ def golden():
 # ---------------------------------------------------------------- banco local
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@127.0.0.1:54322/postgres")
 CLEANUP_TABLES = [
+    "simulation_lines", "simulations", "assumptions",
     "audit_events", "snapshots", "reconciliations", "validations", "value_adjustments",
     "extracted_values", "jobs", "source_files", "tax_cases", "account_mappings", "companies",
     "office_members", "offices",

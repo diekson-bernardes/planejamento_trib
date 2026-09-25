@@ -15,7 +15,7 @@ const SAMPLES = [
   "1.PGDASD-DECLARACAO-37704456202606001.pdf",
   "1.PGDASD-DECLARACAO-37704456202607001.pdf",
   "1.PGDASD-DECLARACAO-37704456202608001.pdf",
-  "2.Resumo da Folha.pdf",
+  "2.Resumo da Folha 08.pdf",
   "3.DRE.pdf",
   "Balancete.pdf",
 ];

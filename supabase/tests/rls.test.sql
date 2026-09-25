@@ -79,7 +79,7 @@ select set_config('request.jwt.claims',
 
 select is((select count(*) from public.tax_cases where id = 'd0000000-0000-4000-8000-0000000000a1')::int, 1, 'A vê o próprio dossiê');
 select is((select count(*) from public.extracted_values where case_id = 'd0000000-0000-4000-8000-0000000000a1')::int, 1, 'A vê os próprios valores');
-select is((select count(*) from storage.objects where name like 'a0000000-0000-4000-8000-000000000001/%')::int, 1, 'A vê o próprio objeto no Storage');
+select is((select count(*) from storage.objects where name like 'a0000000-0000-4000-8000-000000000001/d0000000-0000-4000-8000-0000000000a1/%')::int, 1, 'A vê o próprio objeto no Storage');
 select is((select count(*) from public.companies where office_id = 'b0000000-0000-4000-8000-000000000002')::int, 0, 'A não vê empresas de B');
 
 update public.offices set settings = '{"tolerance_brl": 5}' where id = 'a0000000-0000-4000-8000-000000000001';

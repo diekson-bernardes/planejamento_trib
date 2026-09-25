@@ -246,3 +246,115 @@ def get_snapshot(conn: psycopg.Connection, snapshot_id, office_id) -> dict[str, 
         "select id, case_id, content, sha256, created_at from snapshots where id = %s and office_id = %s",
         (snapshot_id, office_id),
     ).fetchone()
+
+
+# ---------------------------------------------------------------- motor tributário (ciclo 2)
+def get_case_snapshot(conn: psycopg.Connection, case_id, office_id) -> dict[str, Any] | None:
+    return conn.execute(
+        "select s.id, s.case_id, s.content, s.sha256 from snapshots s "
+        "join tax_cases c on c.id = s.case_id and c.office_id = s.office_id "
+        "where s.case_id = %s and s.office_id = %s and c.status = 'homologated'",
+        (case_id, office_id),
+    ).fetchone()
+
+
+def upsert_suggestions(conn: psycopg.Connection, case_id, office_id, rows: list[dict]) -> int:
+    """Grava as sugestões. Premissa já confirmada só volta a pendente se a sugestão mudou; premissas que deixaram
+    de ser sugeridas (atividade renomeada, perfil sem Fator R) são removidas — a confirmação segue na auditoria."""
+    with conn.transaction():
+        conn.execute(
+            "delete from assumptions where case_id = %s and office_id = %s "
+            "and not ((key, scope) in (select * from unnest(%s::text[], %s::text[])))",
+            (case_id, office_id, [r["key"] for r in rows], [r["scope"] for r in rows]),
+        )
+        for r in rows:
+            conn.execute(
+                """
+                insert into assumptions (office_id, case_id, key, scope, grp, label, value_type, choices,
+                                         suggested_value, suggested_origin)
+                values (%(o)s, %(c)s, %(key)s, %(scope)s, %(group)s, %(label)s, %(value_type)s, %(choices)s,
+                        %(suggested)s, %(origin)s)
+                on conflict (case_id, key, scope) do update set
+                  grp = excluded.grp, label = excluded.label, value_type = excluded.value_type,
+                  choices = excluded.choices, suggested_origin = excluded.suggested_origin, updated_at = now(),
+                  status = case when assumptions.suggested_value is distinct from excluded.suggested_value
+                                then 'pending' else assumptions.status end,
+                  suggested_value = excluded.suggested_value
+                where assumptions.office_id = %(o)s
+                """,
+                {"o": office_id, "c": case_id, "key": r["key"], "scope": r["scope"], "group": r["group"],
+                 "label": r["label"], "value_type": r["value_type"], "choices": Jsonb(r["choices"]),
+                 "suggested": Jsonb(r["suggested_value"]), "origin": Jsonb(r["suggested_origin"])},
+            )
+    return len(rows)
+
+
+def load_assumptions(conn: psycopg.Connection, case_id, office_id) -> list[dict[str, Any]]:
+    return conn.execute(
+        "select key, scope, value, status from assumptions where case_id = %s and office_id = %s order by key, scope",
+        (case_id, office_id),
+    ).fetchall()
+
+
+def find_simulation(conn: psycopg.Connection, case_id, office_id, snapshot_sha: str, assumptions_hash: str,
+                    rules_hash: str) -> dict[str, Any] | None:
+    return conn.execute(
+        "select id, status from simulations where case_id = %s and office_id = %s and snapshot_sha256 = %s "
+        "and assumptions_hash = %s and rules_hash = %s",
+        (case_id, office_id, snapshot_sha, assumptions_hash, rules_hash),
+    ).fetchone()
+
+
+def save_simulation(conn: psycopg.Connection, *, case_id, office_id, snapshot_id, snapshot_sha: str,
+                    assumptions_hash: str, rules_version: str, rules_hash: str, status: str, result: dict,
+                    result_hash: str | None, lines: list[dict], requested_by=None, duration_ms: int | None = None,
+                    error_code: str | None = None, error_message: str | None = None):
+    with conn.transaction():
+        row = conn.execute(
+            """
+            insert into simulations (office_id, case_id, snapshot_id, snapshot_sha256, assumptions_hash, rules_version,
+                                     rules_hash, status, result_hash, result, error_code, error_message, requested_by,
+                                     duration_ms)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            on conflict (case_id, snapshot_sha256, assumptions_hash, rules_hash) do nothing
+            returning id
+            """,
+            (office_id, case_id, snapshot_id, snapshot_sha, assumptions_hash, rules_version, rules_hash, status,
+             result_hash, Jsonb(result), error_code, error_message, requested_by, duration_ms),
+        ).fetchone()
+        if row is None:
+            return None
+        with conn.cursor() as cur:
+            cur.executemany(
+                "insert into simulation_lines (office_id, simulation_id, ordinal, regime, period, tax, kind, base, rate, "
+                "amount, formula, rule_ref, origin, activity, partial, verified) "
+                "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                [(office_id, row["id"], i, l["regime"], l["period"], l["tax"], l["kind"], l["base"], l["rate"],
+                  l["amount"], l["formula"], l["rule_ref"], Jsonb(l["origin"]), l["activity"], l["partial"],
+                  l["verified"]) for i, l in enumerate(lines)],
+            )
+        return row["id"]
+
+
+def get_simulation(conn: psycopg.Connection, simulation_id, office_id) -> dict[str, Any] | None:
+    return conn.execute(
+        "select id, case_id, status, result, result_hash, rules_version, rules_hash, snapshot_sha256, "
+        "assumptions_hash, created_at from simulations where id = %s and office_id = %s",
+        (simulation_id, office_id),
+    ).fetchone()
+
+
+def get_simulation_lines(conn: psycopg.Connection, simulation_id, office_id) -> list[dict[str, Any]]:
+    return conn.execute(
+        "select regime, period, tax, kind, base, rate, amount, formula, rule_ref, origin, activity, partial, verified "
+        "from simulation_lines where simulation_id = %s and office_id = %s order by ordinal",
+        (simulation_id, office_id),
+    ).fetchall()
+
+
+def get_confirmed_assumption_rows(conn: psycopg.Connection, case_id, office_id) -> list[dict[str, Any]]:
+    return conn.execute(
+        "select key, scope, label, suggested_value, value, justification, confirmed_at from assumptions "
+        "where case_id = %s and office_id = %s order by grp, key, scope",
+        (case_id, office_id),
+    ).fetchall()

@@ -1,0 +1,29 @@
+{
+  "domain": "presumido",
+  "fonte": "Lei 9.249/1995 arts. 15 e 20; Lei 9.430/1996 arts. 25 e 29; Lei 9.718/1998; LC 224/2025 art. 14",
+  "verificado": false,
+  "classes": {
+    "revenda_combustiveis": {"descricao": "Revenda de combustíveis", "irpj": "0.016", "csll": "0.12"},
+    "comercio_industria": {"descricao": "Comércio, indústria", "irpj": "0.08", "csll": "0.12"},
+    "servicos_hospitalares": {"descricao": "Serviços hospitalares e auxílio diagnóstico (requisitos legais)", "irpj": "0.08", "csll": "0.12"},
+    "transporte_cargas": {"descricao": "Transporte de cargas", "irpj": "0.08", "csll": "0.12"},
+    "transporte_passageiros": {"descricao": "Transporte de passageiros", "irpj": "0.16", "csll": "0.12"},
+    "servicos_gerais": {"descricao": "Serviços em geral, profissões regulamentadas, intermediação, locação", "irpj": "0.32", "csll": "0.32"}
+  },
+  "irpj": "0.15",
+  "adicional_irpj": "0.10",
+  "adicional_limite_mensal": "20000.00",
+  "csll": "0.09",
+  "pis_cumulativo": "0.0065",
+  "cofins_cumulativo": "0.03",
+  "lc224": {
+    "limite_anual": "5000000.00",
+    "limite_trimestral": "1250000.00",
+    "fator": "1.10",
+    "irpj_desde": "2026-01-01",
+    "csll_desde": "2026-04-01",
+    "regra": "Excedente = receita acumulada no ano até o fim do trimestre − limite trimestral × nº do trimestre (limitado à receita do trimestre); presunção × fator sobre o excedente",
+    "fonte": "LC 224/2025 art. 14; IN RFB 2.305/2025 — mecânica trimestral lida em fontes secundárias",
+    "verificado": false
+  }
+}

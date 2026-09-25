@@ -1,0 +1,72 @@
+{
+ "descricao": "Caso dourado do motor: amostra comercial 08/2026 (única competência completa), premissas sugeridas aceitas e declarações de elegibilidade = 'nao'",
+ "approved_by": "Diekson Bernardes (responsável de negócio)",
+ "approved_at": "2026-09-25",
+ "approval_note": "Aprovado no SDD Build do ciclo 2 após revisão da memória de cálculo; DRE da amostra sem CMV (lucro elevado no Real) registrado como característica do dado",
+ "rules_version": "2026.1.0",
+ "assumption_overrides": {
+  "eleg.socio_pj": "nao",
+  "eleg.participacao_receita_global": "nao",
+  "eleg.atividade_vedada": "nao",
+  "eleg.debitos_sem_suspensao": "nao",
+  "eleg.obrigatoriedade_real": "nao"
+ },
+ "competences": [
+  "2026-08"
+ ],
+ "ranking": [
+  "SIMPLES",
+  "PRESUMIDO",
+  "REAL"
+ ],
+ "regimes": {
+  "SIMPLES": {
+   "total": "23430.47",
+   "by_tax": {
+    "cofins": "5291.75",
+    "cpp": "7880.54",
+    "csll": "1871.86",
+    "icms": "4711.85",
+    "irpj": "2527.02",
+    "pis": "1147.45"
+   },
+   "partial_periods": []
+  },
+  "PRESUMIDO": {
+   "total": "26165.68",
+   "by_tax": {
+    "adicional_irpj": "0.00",
+    "cofins": "6095.42",
+    "cpp": "6766.34",
+    "csll": "2194.35",
+    "icms": "4711.85",
+    "irpj": "2438.17",
+    "iss": "0.00",
+    "pis": "1320.68",
+    "rat": "676.63",
+    "terceiros": "1962.24"
+   },
+   "partial_periods": [
+    "2026-T3"
+   ]
+  },
+  "REAL": {
+   "total": "63093.28",
+   "by_tax": {
+    "adicional_irpj": "11545.79",
+    "cofins": "4042.82",
+    "cpp": "6766.34",
+    "csll": "12191.21",
+    "icms": "4711.85",
+    "irpj": "20318.68",
+    "iss": "0.00",
+    "pis": "877.72",
+    "rat": "676.63",
+    "terceiros": "1962.24"
+   },
+   "partial_periods": [
+    "2026-T3"
+   ]
+  }
+ }
+}

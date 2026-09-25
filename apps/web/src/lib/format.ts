@@ -80,3 +80,57 @@ export function monthsBetween(start: string, end: string): string[] {
   }
   return out;
 }
+
+export const REGIME_LABEL: Record<string, string> = {
+  SIMPLES: "Simples Nacional",
+  PRESUMIDO: "Lucro Presumido",
+  REAL: "Lucro Real",
+};
+
+export const TAX_LABEL: Record<string, string> = {
+  irpj: "IRPJ",
+  adicional_irpj: "Adicional IRPJ",
+  csll: "CSLL",
+  pis: "PIS",
+  cofins: "Cofins",
+  cpp: "CPP",
+  rat: "RAT",
+  terceiros: "Terceiros",
+  icms: "ICMS",
+  iss: "ISS",
+  ipi: "IPI",
+};
+
+export const ELIGIBILITY: Record<string, { label: string; tone: Tone }> = {
+  elegivel: { label: "Elegível", tone: "success" },
+  elegivel_com_alerta: { label: "Elegível com alerta", tone: "warning" },
+  indeterminado: { label: "Indeterminado", tone: "warning" },
+  inelegivel: { label: "Inelegível", tone: "danger" },
+};
+
+export const ASSUMPTION_GROUP_LABEL: Record<string, string> = {
+  atividades: "Atividades (perfil por receita)",
+  icms_iss: "ICMS e ISS no regime normal",
+  receitas: "Outras receitas",
+  pis_cofins: "PIS/Cofins",
+  real: "Lucro Real",
+  folha: "Encargos da folha",
+  elegibilidade: "Elegibilidade",
+};
+
+/** "0.02" → "2,00%" quando é percentual; valores monetários em BRL; demais em texto. */
+export function formatAssumption(value: unknown, type: string): string {
+  if (value === null || value === undefined) return "—";
+  if (type === "percent") return `${(Number(value) * 100).toFixed(2).replace(".", ",")}%`;
+  if (type === "decimal") return formatBRL(String(value));
+  if (type === "boolean") return value ? "Sim" : "Não";
+  if (type === "taxes") return (value as string[]).length ? (value as string[]).map((t) => t.toUpperCase()).join(", ") : "nenhum";
+  if (type === "profile") {
+    const p = value as Record<string, unknown>;
+    return `Anexo ${p.anexo} · ${p.presumido}${p.cumulativo_no_real ? " · cumulativo no Real" : ""}${p.fator_r ? " · Fator R" : ""}`;
+  }
+  if (value === "nao_informado") return "Não informado";
+  if (value === "sim") return "Sim";
+  if (value === "nao") return "Não";
+  return String(value);
+}

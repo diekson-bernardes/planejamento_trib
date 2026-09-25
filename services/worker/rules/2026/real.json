@@ -1,0 +1,19 @@
+{
+  "domain": "real",
+  "fonte": "Decreto 9.580/2018 (RIR); Lei 9.249/1995; Lei 8.981/1995 art. 42 e Lei 9.065/1995 art. 15 (trava 30%); Leis 10.637/2002 e 10.833/2003 (PIS/Cofins); Lei 10.833/2003 art. 10 (receitas que permanecem no cumulativo)",
+  "verificado": false,
+  "irpj": "0.15",
+  "adicional_irpj": "0.10",
+  "adicional_limite_mensal": "20000.00",
+  "csll": "0.09",
+  "trava_compensacao": "0.30",
+  "pis_nao_cumulativo": "0.0165",
+  "cofins_nao_cumulativo": "0.076",
+  "pis_cumulativo": "0.0065",
+  "cofins_cumulativo": "0.03",
+  "sugestao_creditos": {
+    "descricao": "Base de créditos sugerida = débitos do período nas contas de mercadorias/compras do balancete",
+    "rotulos": ["Mercadorias p/ Revenda", "Compras de Mercadorias", "Matéria-Prima", "Insumos"],
+    "coluna": "debito"
+  }
+}

@@ -94,3 +94,16 @@ export function normalizeDecimal(value: string): string {
   const v = value.trim();
   return v.includes(",") ? v.replace(/\./g, "").replace(",", ".") : v;
 }
+
+/** Confirmação de premissa: valor JSON (texto, número como texto, booleano, lista ou perfil) + justificativa. */
+export const confirmAssumptionSchema = z
+  .object({
+    assumptionId: z.uuid(),
+    value: z.union([z.string().trim().min(1), z.boolean(), z.array(z.string()), z.record(z.string(), z.unknown())]),
+    suggested: z.unknown().optional(),
+    justification: z.string().trim().optional(),
+  })
+  .refine(
+    (v) => JSON.stringify(v.value) === JSON.stringify(v.suggested) || (v.justification ?? "").length >= 5,
+    { message: "Justifique (mín. 5 caracteres) ao alterar o valor sugerido" },
+  );
