@@ -10,7 +10,7 @@
 | **Status** | 🔨 em andamento |
 | **Feito** | Brainstorm, Define e Design (2026-09-25); Build completo com Verify Gate verde, golden 08/2026 aprovado e revisão pós-build com 9 correções aplicadas e 1 contestada (2026-09-25) |
 | **Falta** | Conferência visual das telas de planejamento pelo usuário; revisão contábil das regras marcadas `verificado: false` antes do piloto |
-| **Pronto quando** | (1) `npm run verify` termina com exit 0 na branch `feat/motor-tributario` commitada; (2) pela interface em http://localhost:3000/cases/<id>/planning, um analista gera premissas, confirma, calcula e vê o comparativo de 08/2026 igual ao golden (Simples 23.430,47 < Presumido 26.165,68 < Real 63.093,28) e baixa o XLSX da memória; (3) o responsável técnico registra a revisão das regras `verificado: false` (LC 224 trimestral, ICMS/ISS da faixa 6 pela faixa 5, cumulatividade hospitalar). |
+| **Pronto quando** | (1) `npm run verify` termina com exit 0 na `master`; (2) pela interface em http://localhost:3000/cases/<id>/planning, um analista gera premissas, confirma, calcula e vê o comparativo igual aos goldens aprovados (08/2026: Simples 23.430,47 < Presumido 26.165,68 < Real 63.093,28; 06–08/2026: Simples 99.249,46 < Presumido 102.578,12 < Real 299.770,55) e baixa o XLSX da memória; (3) o responsável técnico registra a revisão das regras `verificado: false` (LC 224 trimestral, ICMS/ISS da faixa 6 pela faixa 5, cumulatividade hospitalar). |
 
 ---
 
@@ -20,7 +20,9 @@
 - 2026-09-25 — Cycle 1 commitado (`f6daf3c`) e criada a branch `feat/motor-tributario` antes do build; modo `default`; revisão escolhida "só após o build".
 - 2026-09-25 — Golden `services/worker/tests/golden/motor_202608.json` aprovado pelo usuário ("sim"), com a ressalva de que a DRE da amostra não tem CMV.
 - 2026-09-25 — Revisão pós-build: 9 correções aplicadas; a da LC 224 foi contestada por seguir a premissa A-002 do DEFINE. A identificação das atividades mudou, por isso os dossiês com premissas antigas precisam de "Regenerar premissas".
-- 2026-09-25 — Ciclo 2 commitado na branch `feat/motor-tributario` a pedido do usuário (sem push).
+- 2026-09-25 — Ciclo 2 commitado e publicado: PR #1 (ciclo 1) e PR #2 (ciclo 2) merged na `master` de `https://github.com/diekson-bernardes/planejamento_trib`; `master` virou a branch padrão; branches de feature apagadas.
+- 2026-09-25 — Revisão do Codex no PR #2: 3 correções aplicadas (premissas gravadas por simulação, PIS/Cofins zerados por tributo, base do Presumido ≥ 0) e 1 contestada (sublimite: efeito no mês seguinte ao excesso >20%).
+- 2026-09-25 — Com DRE e balancete de 06 e 07 (amostras renomeadas `3.DRE 0X.pdf`, `4.Balancete 0X.pdf`), as três competências ficaram completas. Correção do ciclo 1: conta credora dentro das despesas (Vale Transporte 366,93 na DRE 06) reduz despesa em vez de contar como receita. Novo golden `motor_202606_08.json` aprovado pelo usuário (opção a). Não existe trimestre completo sem setembro: 2026-T2 só com junho, 2026-T3 com julho e agosto.
 - 2026-09-25 — O usuário renomeou a amostra `2.Resumo da Folha.pdf` para `2.Resumo da Folha 08.pdf` e acrescentou `2.Resumo da Folha 06.pdf` e `2.Resumo da Folha 07.pdf`; testes e `scripts/verify.mjs` atualizados.
 
 ---
@@ -79,9 +81,8 @@
   - encargos, elegibilidade e atividades.
   Qualquer mudança = nova versão em `services/worker/rules/2026/` (ex.: `2026.1.1`).
 - Amostra com CMV na DRE (a atual não tem, e o lucro do Real sai alto) e amostras de serviços (Anexos III/V com Fator R) para ampliar os goldens.
-- As folhas de 06 e 07/2026 existem agora, mas DRE e balancete só cobrem 08/2026. Para ter trimestre completo faltam DRE e balancete de 06 e 07.
+- Trimestre completo: com PGDAS-D, folha, DRE e balancete de 09/2026 o 2026-T3 fecha; novo golden exigirá nova aprovação.
 - Ciclo 3: projeção de 12 meses, sensibilidade, ponto de virada, recomendação/parecer, aprovação do responsável técnico, PDF executivo e custo de conformidade.
-- Publicar no remoto: `master` está em `a374529`; as branches `feat/importacao-conciliacao` e `feat/motor-tributario` só existem localmente.
 
 ### Checklist de fechamento (inventário do que foi conferido)
 
@@ -94,9 +95,8 @@
 
 1. Conferir as telas de planejamento — http://localhost:3000/cases/6811e832-67d7-4b5b-ad53-cdd8ba2fb708/planning e a simulação `eb2b84ef-d04d-4206-a4a1-0356ffeaba07`. Pronto quando: o usuário confirmar o comparativo e a memória, ou listar ajustes.
 2. Regenerar premissas dos dossiês antigos — botão "Regenerar premissas" em `/cases/4b37686d-4ab8-4429-ab49-c9c7b312b6a9/planning`. Pronto quando: as atividades aparecerem pendentes, forem confirmadas e o cálculo gerar simulação com o Simples calculado.
-3. Decidir a publicação no remoto `https://github.com/diekson-bernardes/planejamento_trib.git` (branches `feat/importacao-conciliacao` e `feat/motor-tributario`). Pronto quando: o usuário autorizar o push ou decidir adiar.
-4. Agendar a revisão contábil das regras `verificado: false`. Pronto quando: cada regra tiver o dispositivo legal conferido e `verificado` atualizado numa nova versão de regras, com o golden recalculado e reaprovado se mudar.
-5. Iniciar o ciclo 3 com a skill **sdd-brainstorm** (projeção/sensibilidade/recomendação). Pronto quando: existir `sdd/BRAINSTORM_<ciclo 3>.md` aprovado.
+3. Agendar a revisão contábil das regras `verificado: false`. Pronto quando: cada regra tiver o dispositivo legal conferido e `verificado` atualizado numa nova versão de regras, com o golden recalculado e reaprovado se mudar.
+4. Iniciar o ciclo 3 com a skill **sdd-brainstorm** (projeção/sensibilidade/recomendação). Pronto quando: existir `sdd/BRAINSTORM_<ciclo 3>.md` aprovado.
 
 ### Alertas — o que não quebrar
 
@@ -111,6 +111,6 @@
 ### Onde está o trabalho
 
 - Projeto: `C:\Users\User\Documents\BRAVO-BUILDER-PROJETOS\PLANEJAMENTO_TRIB` (monorepo: `apps/web`, `services/worker`, `supabase/`).
-- Git: branch `feat/motor-tributario` com o commit do ciclo 2 sobre `f6daf3c` (ciclo 1); apenas `.claude/launch.json` (configuração local do preview) fica fora do Git. Remoto `origin` = `https://github.com/diekson-bernardes/planejamento_trib.git`, nada publicado.
+- Git: `master` em `https://github.com/diekson-bernardes/planejamento_trib.git` (remoto `origin`, branch padrão); trabalho novo em branch de feature com PR. Apenas `.claude/launch.json` (configuração local do preview) fica fora do Git.
 - Artefatos SDD: `sdd/BRAINSTORM_MOTOR_TRIBUTARIO.md`, `sdd/DEFINE_MOTOR_TRIBUTARIO.md`, `sdd/DESIGN_MOTOR_TRIBUTARIO.md`, `sdd/BUILD_REPORT_MOTOR_TRIBUTARIO.md`; ciclo 1 em `sdd/HANDOFF_IMPORTACAO_CONCILIACAO.md`.
 - Ambiente local: Docker Desktop + `npx supabase start` (Postgres em `127.0.0.1:54322`, API em `127.0.0.1:54321`), Next.js na porta 3000, worker via `python -m worker.main` com `PYTHONPATH=services\worker\src`.

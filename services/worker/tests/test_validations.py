@@ -6,7 +6,9 @@ import pytest
 from worker.pipeline import parse_document
 from worker.validations import validate
 
-NAMES = ["pgdas_202606", "pgdas_202607", "pgdas_202608", "folha_202608", "dre_202608", "balancete_202608"]
+from conftest import ALL_SAMPLE_FILES
+
+NAMES = sorted(ALL_SAMPLE_FILES)   # 12 documentos: 06, 07 e 08/2026
 
 
 @pytest.mark.samples
@@ -47,3 +49,17 @@ def test_non_monthly_period_is_flagged():
                          competence="2026-08", pages=1, values=[])
     by_rule = {v.rule: v for v in validate(result, monthly=False)}
     assert by_rule["periodo_mensal"].status == "fail"
+
+
+@pytest.mark.samples
+def test_credit_account_inside_expenses_reduces_expenses(sample):
+    """DRE 06/2026: "Vale Transporte" credora (366,93) no grupo de despesas reduz a despesa, não é receita."""
+    from worker.validations import dre_groups, signed_total
+
+    result, validations = parse_document(sample("dre_202606"))
+    receitas, despesas = dre_groups(result.values)
+    vt = [v for v in despesas if v.label == "Vale Transporte"]
+    assert vt and vt[0].nature == "C" and vt[0].value == Decimal("366.93")
+    assert not [v for v in receitas if v.label == "Vale Transporte"]
+    assert signed_total(despesas, "D") == Decimal("108663.59")
+    assert [v.rule for v in validations if v.status != "pass"] == []

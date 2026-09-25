@@ -82,3 +82,11 @@ def test_activity_key_distinguishes_zero_declared_taxes(snapshot_content):
     keys = [a.key for a in SnapshotView(content).activities("2026-08")]
     assert len(set(keys)) == 2
     assert sorted("icms" in k.split("~zero-")[1].split("-") for k in keys) == [False, True]
+
+
+def test_other_revenue_ignores_credit_accounts_inside_expenses(snapshot_content_06_08, rules):
+    """06/2026: outras receitas = Bonificações (grupo de receitas); o Vale Transporte credor das despesas fica fora."""
+    view = SnapshotView(snapshot_content_06_08)
+    by = {(s.key, s.scope): s for s in suggest(view, rules)}
+    outras = by[("outras_receitas", "competencia:2026-06")]
+    assert outras.suggested_value == "2460.72" and outras.origin["accounts"] == ["4.1.3.01.001"]

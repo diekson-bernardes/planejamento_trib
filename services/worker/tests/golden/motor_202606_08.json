@@ -1,0 +1,96 @@
+{
+ "descricao": "Caso dourado do motor: amostra comercial 06, 07 e 08/2026 (três competências completas: PGDAS-D, folha, DRE e balancete), premissas sugeridas aceitas e declarações de elegibilidade = 'nao'. IRPJ/CSLL trimestrais parciais: 2026-T2 só com junho e 2026-T3 com julho e agosto",
+ "approved_by": "Diekson Bernardes (responsável de negócio)",
+ "approved_at": "2026-09-25",
+ "approval_note": "Aprovado em 2026-09-25 (opção a) após apresentação dos totais por mês e trimestre; DREs de 06–08 sem CMV (lucro elevado no Real) registradas como característica do dado; nenhum trimestre completo sem setembro",
+ "sample_set": "completo_06_08",
+ "rules_version": "2026.1.0",
+ "assumption_overrides": {
+  "eleg.socio_pj": "nao",
+  "eleg.participacao_receita_global": "nao",
+  "eleg.atividade_vedada": "nao",
+  "eleg.debitos_sem_suspensao": "nao",
+  "eleg.obrigatoriedade_real": "nao"
+ },
+ "competences": [
+  "2026-06",
+  "2026-07",
+  "2026-08"
+ ],
+ "ranking": [
+  "SIMPLES",
+  "PRESUMIDO",
+  "REAL"
+ ],
+ "regimes": {
+  "SIMPLES": {
+   "total": "99249.46",
+   "by_period": {
+    "2026-06": "36843.53",
+    "2026-07": "38975.46",
+    "2026-08": "23430.47"
+   },
+   "by_tax": {
+    "cofins": "22688.01",
+    "cpp": "33787.25",
+    "csll": "8025.47",
+    "icms": "18994.70",
+    "irpj": "10834.41",
+    "pis": "4919.62"
+   },
+   "partial_periods": []
+  },
+  "PRESUMIDO": {
+   "total": "102578.12",
+   "by_period": {
+    "2026-06": "29904.37",
+    "2026-07": "29398.15",
+    "2026-08": "21533.16",
+    "2026-T2": "8734.34",
+    "2026-T3": "13008.10"
+   },
+   "by_tax": {
+    "adicional_irpj": "1234.59",
+    "cofins": "26206.93",
+    "cpp": "21550.99",
+    "csll": "9655.97",
+    "icms": "18994.70",
+    "irpj": "10851.88",
+    "iss": "0.00",
+    "pis": "5678.17",
+    "rat": "2155.10",
+    "terceiros": "6249.79"
+   },
+   "partial_periods": [
+    "2026-T2",
+    "2026-T3"
+   ]
+  },
+  "REAL": {
+   "total": "299770.55",
+   "by_period": {
+    "2026-06": "33950.97",
+    "2026-07": "38729.17",
+    "2026-08": "19037.60",
+    "2026-T2": "74654.32",
+    "2026-T3": "133398.49"
+   },
+   "by_tax": {
+    "adicional_irpj": "56956.71",
+    "cofins": "35138.42",
+    "cpp": "21550.99",
+    "csll": "56661.04",
+    "icms": "18994.70",
+    "irpj": "94435.06",
+    "iss": "0.00",
+    "pis": "7628.74",
+    "rat": "2155.10",
+    "terceiros": "6249.79"
+   },
+   "partial_periods": [
+    "2026-T2",
+    "2026-T3"
+   ]
+  }
+ }
+}
