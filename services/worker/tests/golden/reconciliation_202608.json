@@ -1,0 +1,149 @@
+{
+ "tolerance": "1.00",
+ "results": [
+  {
+   "competence": "2026-06",
+   "rule": "R1",
+   "left_value": "321353.79",
+   "right_value": null,
+   "diff": null,
+   "status": "missing_source"
+  },
+  {
+   "competence": "2026-06",
+   "rule": "R2",
+   "left_value": "36843.53",
+   "right_value": null,
+   "diff": null,
+   "status": "missing_source"
+  },
+  {
+   "competence": "2026-06",
+   "rule": "R3",
+   "left_value": null,
+   "right_value": null,
+   "diff": null,
+   "status": "missing_source"
+  },
+  {
+   "competence": "2026-06",
+   "rule": "R4",
+   "left_value": null,
+   "right_value": null,
+   "diff": null,
+   "status": "missing_source"
+  },
+  {
+   "competence": "2026-06",
+   "rule": "R5",
+   "left_value": null,
+   "right_value": null,
+   "diff": null,
+   "status": "missing_source"
+  },
+  {
+   "competence": "2026-06",
+   "rule": "R6",
+   "left_value": null,
+   "right_value": null,
+   "diff": null,
+   "status": "missing_source"
+  },
+  {
+   "competence": "2026-07",
+   "rule": "R1",
+   "left_value": "349029.90",
+   "right_value": null,
+   "diff": null,
+   "status": "missing_source"
+  },
+  {
+   "competence": "2026-07",
+   "rule": "R2",
+   "left_value": "38975.46",
+   "right_value": null,
+   "diff": null,
+   "status": "missing_source"
+  },
+  {
+   "competence": "2026-07",
+   "rule": "R3",
+   "left_value": null,
+   "right_value": null,
+   "diff": null,
+   "status": "missing_source"
+  },
+  {
+   "competence": "2026-07",
+   "rule": "R4",
+   "left_value": null,
+   "right_value": null,
+   "diff": null,
+   "status": "missing_source"
+  },
+  {
+   "competence": "2026-07",
+   "rule": "R5",
+   "left_value": null,
+   "right_value": null,
+   "diff": null,
+   "status": "missing_source"
+  },
+  {
+   "competence": "2026-07",
+   "rule": "R6",
+   "left_value": "36843.53",
+   "right_value": null,
+   "diff": null,
+   "status": "missing_source"
+  },
+  {
+   "competence": "2026-08",
+   "rule": "R1",
+   "left_value": "203180.77",
+   "right_value": "203180.77",
+   "diff": "0.00",
+   "status": "ok"
+  },
+  {
+   "competence": "2026-08",
+   "rule": "R2",
+   "left_value": "23430.47",
+   "right_value": "23430.47",
+   "diff": "0.00",
+   "status": "ok"
+  },
+  {
+   "competence": "2026-08",
+   "rule": "R3",
+   "left_value": "2963.53",
+   "right_value": "2963.53",
+   "diff": "0.00",
+   "status": "ok"
+  },
+  {
+   "competence": "2026-08",
+   "rule": "R4",
+   "left_value": "2706.49",
+   "right_value": "2706.49",
+   "diff": "0.00",
+   "status": "ok"
+  },
+  {
+   "competence": "2026-08",
+   "rule": "R5",
+   "left_value": "34212.13",
+   "right_value": "34212.13",
+   "diff": "0.00",
+   "status": "ok"
+  },
+  {
+   "competence": "2026-08",
+   "rule": "R6",
+   "left_value": "38975.46",
+   "right_value": "38975.46",
+   "diff": "0.00",
+   "status": "ok"
+  }
+ ]
+}

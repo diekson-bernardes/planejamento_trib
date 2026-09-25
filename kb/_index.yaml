@@ -1,0 +1,44 @@
+# Índice das bases de conhecimento deste projeto.
+# Criado na primeira vez que a skill sdd-kb roda; cada domínio novo acrescenta um bloco.
+# Um domínio que existe em pasta mas não está aqui é invisível — por isso o registro é obrigatório.
+
+version: "1.0"
+
+# Limites de tamanho, em linhas. Não são burocracia: acima disso o arquivo passa a ser
+# grande demais para a IA carregar junto com o resto do contexto, e ela começa a ignorar partes.
+limits:
+  quick_reference: 100
+  concept: 150
+  pattern: 200
+
+domains:
+  simples-nacional:
+    name: Simples Nacional
+    description: Anexos, faixas, alíquota efetiva, repartição, Fator R, limites, sublimites, exclusão e cálculo do DAS (LC 123/2006).
+    path: simples-nacional/
+    updated: 2026-09-24
+  lucro-presumido:
+    name: Lucro Presumido
+    description: Presunção de IRPJ/CSLL, adicional, PIS/Cofins cumulativo, limite de opção e acréscimo de 10% da LC 224/2025.
+    path: lucro-presumido/
+    updated: 2026-09-24
+  lucro-real:
+    name: Lucro Real
+    description: Obrigatoriedade, ponte do lucro contábil ao tributável (e-Lalur/e-Lacs), compensação de prejuízos e PIS/Cofins não cumulativo.
+    path: lucro-real/
+    updated: 2026-09-24
+  planejamento-comparativo:
+    name: Planejamento Tributário Comparativo
+    description: Método para comparar Simples, Presumido e Real — elegibilidade, encargos de folha, remuneração de sócios (2026), ponto de virada e limites legais.
+    path: planejamento-comparativo/
+    updated: 2026-09-24
+  documentos-fonte:
+    name: Documentos-fonte e Conciliação
+    description: Leitura do PGDAS-D e dos relatórios Alterdata (folha, DRE, balancete) e regras de conciliação entre fontes por competência.
+    path: documentos-fonte/
+    updated: 2026-09-24
+  reforma-tributaria:
+    name: Reforma Tributária do Consumo
+    description: CBS, IBS e IS (EC 132/2023, LC 214/2025) — calendário de transição 2026–2033 e efeitos no Simples e nos créditos B2B.
+    path: reforma-tributaria/
+    updated: 2026-09-24

@@ -1,0 +1,30 @@
+# dependências e builds
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# amostras reais com dados pessoais (LGPD) — nunca versionar
+docs/Amostras/
+
+# supabase local
+supabase/.temp/
+supabase/.branches/
+
+# sistema
+.DS_Store
+Thumbs.db
