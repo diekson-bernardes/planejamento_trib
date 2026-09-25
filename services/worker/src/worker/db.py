@@ -291,7 +291,8 @@ def upsert_suggestions(conn: psycopg.Connection, case_id, office_id, rows: list[
 
 def load_assumptions(conn: psycopg.Connection, case_id, office_id) -> list[dict[str, Any]]:
     return conn.execute(
-        "select key, scope, value, status from assumptions where case_id = %s and office_id = %s order by key, scope",
+        "select key, scope, grp, label, suggested_value, value, status, justification, confirmed_at from assumptions "
+        "where case_id = %s and office_id = %s order by key, scope",
         (case_id, office_id),
     ).fetchall()
 
@@ -307,20 +308,21 @@ def find_simulation(conn: psycopg.Connection, case_id, office_id, snapshot_sha: 
 
 def save_simulation(conn: psycopg.Connection, *, case_id, office_id, snapshot_id, snapshot_sha: str,
                     assumptions_hash: str, rules_version: str, rules_hash: str, status: str, result: dict,
-                    result_hash: str | None, lines: list[dict], requested_by=None, duration_ms: int | None = None,
-                    error_code: str | None = None, error_message: str | None = None):
+                    result_hash: str | None, lines: list[dict], assumptions: list[dict], requested_by=None,
+                    duration_ms: int | None = None, error_code: str | None = None, error_message: str | None = None):
+    """Grava a simulação com a cópia das premissas usadas (a mesma lista que gerou `assumptions_hash`)."""
     with conn.transaction():
         row = conn.execute(
             """
             insert into simulations (office_id, case_id, snapshot_id, snapshot_sha256, assumptions_hash, rules_version,
-                                     rules_hash, status, result_hash, result, error_code, error_message, requested_by,
-                                     duration_ms)
-            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                     rules_hash, status, result_hash, result, assumptions, error_code, error_message,
+                                     requested_by, duration_ms)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             on conflict (case_id, snapshot_sha256, assumptions_hash, rules_hash) do nothing
             returning id
             """,
             (office_id, case_id, snapshot_id, snapshot_sha, assumptions_hash, rules_version, rules_hash, status,
-             result_hash, Jsonb(result), error_code, error_message, requested_by, duration_ms),
+             result_hash, Jsonb(result), Jsonb(assumptions), error_code, error_message, requested_by, duration_ms),
         ).fetchone()
         if row is None:
             return None
@@ -339,7 +341,7 @@ def save_simulation(conn: psycopg.Connection, *, case_id, office_id, snapshot_id
 def get_simulation(conn: psycopg.Connection, simulation_id, office_id) -> dict[str, Any] | None:
     return conn.execute(
         "select id, case_id, status, result, result_hash, rules_version, rules_hash, snapshot_sha256, "
-        "assumptions_hash, created_at from simulations where id = %s and office_id = %s",
+        "assumptions_hash, assumptions, created_at from simulations where id = %s and office_id = %s",
         (simulation_id, office_id),
     ).fetchone()
 
@@ -349,12 +351,4 @@ def get_simulation_lines(conn: psycopg.Connection, simulation_id, office_id) -> 
         "select regime, period, tax, kind, base, rate, amount, formula, rule_ref, origin, activity, partial, verified "
         "from simulation_lines where simulation_id = %s and office_id = %s order by ordinal",
         (simulation_id, office_id),
-    ).fetchall()
-
-
-def get_confirmed_assumption_rows(conn: psycopg.Connection, case_id, office_id) -> list[dict[str, Any]]:
-    return conn.execute(
-        "select key, scope, label, suggested_value, value, justification, confirmed_at from assumptions "
-        "where case_id = %s and office_id = %s order by grp, key, scope",
-        (case_id, office_id),
     ).fetchall()

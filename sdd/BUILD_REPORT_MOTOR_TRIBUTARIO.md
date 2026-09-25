@@ -126,7 +126,8 @@
 | `apps/web/src/app/api/simulations/[id]/export/route.ts` | Create | 47 | Yes | |
 | `apps/web/src/app/(app)/cases/[id]/page.tsx` | Modify | 48 | Yes | |
 | `README.md` | Modify | 49 | Yes | |
-| `scripts/verify.mjs` | Modify | — | Yes | fora do manifest: nome da amostra de folha 08/2026 renomeada pelo usuário |
+| `scripts/verify.mjs` | Modify | — | Yes | fora do manifest: nomes das amostras de 08/2026 renomeadas pelo usuário (folha, DRE, balancete) |
+| `supabase/migrations/20260925000002_simulation_assumptions.sql` | Create | — | Yes | fora do manifest: cópia das premissas por simulação (revisão do PR #2) |
 | `supabase/tests/rls.test.sql` | Modify | — | Yes | fora do manifest: contagem de objetos do Storage restrita ao caminho da fixture |
 
 ---
@@ -168,7 +169,7 @@
 | **Command / Method** | `npm run verify` |
 | **Exit / Result** | 0 |
 | **Status** | Green |
-| **Evidence** | Após as correções da revisão: pytest 127 passed; pgTAP 63 (Result: PASS); typecheck ok; vitest 14 passed — "VERIFY GATE: PASS" |
+| **Evidence** | Após as correções das revisões (pós-build e PR #2): pytest 130 passed; pgTAP 63 (Result: PASS); typecheck ok; vitest 14 passed — "VERIFY GATE: PASS" |
 
 ### Manual UX Receipt
 
@@ -232,6 +233,10 @@ N/A
 | 8 | post-build | Página de simulação com falha quebrava | MEDIUM | APPLIED | página mostra o erro; `next build` ok |
 | 9 | post-build | Exclusões de PIS/Cofins ignoravam a parte cumulativa | MEDIUM | APPLIED | exclusões rateadas entre as partes; teste |
 | 10 | post-build | Expressão confusa em `dre_has_icms` | LOW | APPLIED | regex de palavra inteira; golden inalterado |
+| 11 | PR review (Codex, PR #2) | XLSX de simulação antiga exportava as premissas atuais do dossiê | HIGH | APPLIED | coluna `simulations.assumptions` (migration `20260925000002_simulation_assumptions.sql`) com a cópia usada no cálculo; teste em `test_motor_pipeline.py` |
+| 12 | PR review (Codex, PR #2) | Sublimite deveria somar a receita do próprio mês | MEDIUM | REBUTTED | excesso acima de 20% produz efeito no mês seguinte (kb/simples-nacional/concepts/limites-sublimites-e-exclusao.md); comentário no código e teste `test_sublimit_takes_effect_in_the_month_after_the_excess` |
+| 13 | PR review (Codex, PR #2) | PIS e Cofins zerados em conjunto quando só um é monofásico | MEDIUM | APPLIED | bases por tributo no Presumido e no Real; 2 testes |
+| 14 | PR review (Codex, PR #2) | Base de PIS/Cofins do Presumido podia ficar negativa | MEDIUM | APPLIED | base limitada a zero; teste |
 
 ---
 

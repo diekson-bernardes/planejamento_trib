@@ -82,14 +82,19 @@ def quarter_lines(q: QuarterInput, rules: RuleSet) -> list[Line]:
     return lines
 
 
-def month_pis_cofins(comp: str, base: Decimal, rules: RuleSet, formula: str, origin: dict | None = None) -> list[Line]:
+def month_pis_cofins(comp: str, base: Decimal | dict, rules: RuleSet, formula: str | dict,
+                     origin: dict | None = None) -> list[Line]:
+    """PIS/Cofins cumulativos do mês. `base`/`formula` podem ser por tributo (monofásico só de PIS ou só de Cofins).
+    A base nunca fica negativa: exclusão maior que a receita zera o tributo, não reduz o total."""
     pr = rules.presumido
     verified = rules.verified.get("presumido", False)
     out = []
     for tax, key in (("pis", "pis_cumulativo"), ("cofins", "cofins_cumulativo")):
         rate = D(pr[key])
-        out.append(Line("PRESUMIDO", comp, tax, money(base), rate, money(base * rate),
-                        f"{formula} × {pct(rate, 2)}", rules.ref("presumido", key), origin=origin or {}, verified=verified))
+        tax_base = max(ZERO, base[tax] if isinstance(base, dict) else base)
+        tax_formula = formula[tax] if isinstance(formula, dict) else formula
+        out.append(Line("PRESUMIDO", comp, tax, money(tax_base), rate, money(tax_base * rate),
+                        f"{tax_formula} × {pct(rate, 2)}", rules.ref("presumido", key), origin=origin or {}, verified=verified))
     return out
 
 
@@ -114,7 +119,7 @@ def calculate(comps: list[str], view: SnapshotView, a: Assumptions, rules: RuleS
         sources: list = []
         for comp in months:
             receita_bruta = ZERO
-            monofasica = ZERO
+            monofasica = {"pis": ZERO, "cofins": ZERO}
             for act in view.activities(comp):
                 profile = a.profile(act.key)
                 if profile is None:
@@ -122,14 +127,15 @@ def calculate(comps: list[str], view: SnapshotView, a: Assumptions, rules: RuleS
                 revenue[profile.presumido] = revenue.get(profile.presumido, ZERO) + act.receita
                 receita_bruta += act.receita
                 sources.append(act.origin)
-                if {"pis", "cofins"} & a.zeroed(act.key):
-                    monofasica += act.receita
+                for tax in a.zeroed(act.key) & {"pis", "cofins"}:
+                    monofasica[tax] += act.receita
             outras += a.decimal("outras_receitas", comp_scope(comp))
             exclusoes = a.decimal("pis_cofins_exclusoes", comp_scope(comp))
-            base = receita_bruta - monofasica - exclusoes
-            lines += month_pis_cofins(comp, base, rules,
-                                      f"(receita bruta {brl(receita_bruta)} − monofásica {brl(monofasica)} − exclusões {brl(exclusoes)})",
-                                      a.origin("pis_cofins_exclusoes", comp_scope(comp)))
+            lines += month_pis_cofins(
+                comp, {t: receita_bruta - monofasica[t] - exclusoes for t in monofasica}, rules,
+                {t: f"(receita bruta {brl(receita_bruta)} − monofásica {brl(monofasica[t])} − exclusões {brl(exclusoes)})"
+                 for t in monofasica},
+                a.origin("pis_cofins_exclusoes", comp_scope(comp)))
             for tax, key in (("icms", "icms_regime_normal"), ("iss", "iss_regime_normal")):
                 value = a.decimal(key, comp_scope(comp))
                 lines.append(Line("PRESUMIDO", comp, tax, value, ZERO, money(value), f"{tax.upper()} no regime normal — premissa",

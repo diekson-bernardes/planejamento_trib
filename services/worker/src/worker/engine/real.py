@@ -97,26 +97,30 @@ def month_pis_cofins(comp: str, view: SnapshotView, a: Assumptions, rules: RuleS
     rr = rules.real
     verified = rules.verified.get("real", False)
     saldo_credor = {} if saldo_credor is None else saldo_credor
-    nc_rev, cum_rev = ZERO, ZERO
+    # receitas por tributo: uma atividade pode ter só PIS ou só Cofins zerado (monofásico parcial)
+    nc_rev = {"pis": ZERO, "cofins": ZERO}
+    cum_rev = {"pis": ZERO, "cofins": ZERO}
     for act in view.activities(comp):
         profile = a.profile(act.key)
         if profile is None:
             raise MissingRule(f"atividade sem perfil confirmado: {act.description}")
-        if {"pis", "cofins"} & a.zeroed(act.key):
-            continue   # monofásico: alíquota zero na revenda
-        if profile.cumulativo_no_real:
-            cum_rev += act.receita
-        else:
-            nc_rev += act.receita
+        zeroed = a.zeroed(act.key)
+        for tax in ("pis", "cofins"):
+            if tax in zeroed:
+                continue   # monofásico: alíquota zero na revenda
+            if profile.cumulativo_no_real:
+                cum_rev[tax] += act.receita
+            else:
+                nc_rev[tax] += act.receita
     exclusoes = a.decimal("pis_cofins_exclusoes", comp_scope(comp))
     creditos = a.decimal("pis_cofins_creditos_base", comp_scope(comp))
-    # exclusões (ex.: ICMS destacado) rateadas entre as receitas não cumulativas e cumulativas
-    total_rev = nc_rev + cum_rev
-    exc_nc = exclusoes * nc_rev / total_rev if total_rev else ZERO
-    base_nc = max(ZERO, nc_rev - exc_nc)
-    base_cum = max(ZERO, cum_rev - (exclusoes - exc_nc))
     lines = []
     for tax, nc_key, cum_key in (("pis", "pis_nao_cumulativo", "pis_cumulativo"), ("cofins", "cofins_nao_cumulativo", "cofins_cumulativo")):
+        # exclusões (ex.: ICMS destacado) rateadas entre as receitas não cumulativas e cumulativas
+        total_rev = nc_rev[tax] + cum_rev[tax]
+        exc_nc = exclusoes * nc_rev[tax] / total_rev if total_rev else ZERO
+        base_nc = max(ZERO, nc_rev[tax] - exc_nc)
+        base_cum = max(ZERO, cum_rev[tax] - (exclusoes - exc_nc))
         nc_rate, cum_rate = D(rr[nc_key]), D(rr[cum_key])
         debito = base_nc * nc_rate
         anterior = saldo_credor.get(tax, ZERO)

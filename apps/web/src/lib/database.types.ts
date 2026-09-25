@@ -576,6 +576,7 @@ export type Database = {
       }
       simulations: {
         Row: {
+          assumptions: Json
           assumptions_hash: string
           case_id: string
           created_at: string
@@ -594,6 +595,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          assumptions?: Json
           assumptions_hash: string
           case_id: string
           created_at?: string
@@ -612,6 +614,7 @@ export type Database = {
           status: string
         }
         Update: {
+          assumptions?: Json
           assumptions_hash?: string
           case_id?: string
           created_at?: string
@@ -1002,6 +1005,10 @@ export type Database = {
       }
     }
     Functions: {
+      assumption_value_ok: {
+        Args: { p_choices: Json; p_type: string; p_value: Json }
+        Returns: boolean
+      }
       confirm_assumption: {
         Args: { p_id: string; p_justification: string; p_value: Json }
         Returns: undefined

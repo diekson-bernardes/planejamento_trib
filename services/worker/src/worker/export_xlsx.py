@@ -152,6 +152,9 @@ def build_simulation_xlsx(simulation: dict[str, Any], lines: list[dict[str, Any]
     pr.append(["Chave", "Escopo", "Descrição", "Sugerido", "Confirmado", "Justificativa", "Confirmado em"])
     for c in pr[1]:
         c.font = Font(bold=True)
+    if not assumptions:
+        pr.append(["Premissas não registradas nesta simulação (calculada antes da gravação da cópia de premissas); "
+                   "recalcule para obter a memória completa"])
     for a in assumptions:
         pr.append([a.get("key"), a.get("scope"), a.get("label"), _cell(a.get("suggested_value")),
                    _cell(a.get("value")), a.get("justification"), _cell(a.get("confirmed_at"))])

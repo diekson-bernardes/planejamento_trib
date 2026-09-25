@@ -67,3 +67,23 @@ def test_sublimit_in_effect_is_alert(snapshot_content, rules):
     view = SnapshotView(content)
     r = evaluate(view, ["2026-08"], accepted_assumptions(view, rules, informed()), rules)
     assert r["SIMPLES"].status == ALERTA
+
+
+def test_sublimit_takes_effect_in_the_month_after_the_excess(snapshot_content, rules):
+    """Excesso acima de 20% (R$ 4,32 mi): no mês do excesso ICMS/ISS seguem no DAS; saem no mês seguinte."""
+    from worker.engine.eligibility import sublimit_status
+
+    def view_with(rba):
+        content = copy.deepcopy(snapshot_content)
+        for v in content["values"]:
+            if v["doc_type"] == "PGDAS_D" and v["competence"].startswith("2026-08"):
+                if v["field_key"] == "receita.rba":
+                    v["value"] = rba
+                elif v["field_key"] == "receita.rpa":
+                    v["value"] = Decimal("200000.00")
+        return SnapshotView(content)
+
+    # mês do excesso: acumulado anterior 4,2 mi + mês 0,2 mi = 4,4 mi > 4,32 mi
+    assert sublimit_status(view_with(Decimal("4200000.00")), "2026-08", rules).in_effect is False
+    # mês seguinte: o acumulado anterior já passou de 4,32 mi
+    assert sublimit_status(view_with(Decimal("4400000.00")), "2026-08", rules).in_effect is True

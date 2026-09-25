@@ -16,8 +16,8 @@ SAMPLE_FILES = {
     "pgdas_202607": "1.PGDASD-DECLARACAO-37704456202607001.pdf",
     "pgdas_202608": "1.PGDASD-DECLARACAO-37704456202608001.pdf",
     "folha_202608": "2.Resumo da Folha 08.pdf",
-    "dre_202608": "3.DRE.pdf",
-    "balancete_202608": "Balancete.pdf",
+    "dre_202608": "3.DRE 08.pdf",
+    "balancete_202608": "4.Balancete 08.pdf",
 }
 SAMPLE_CNPJ = "37704456000142"
 

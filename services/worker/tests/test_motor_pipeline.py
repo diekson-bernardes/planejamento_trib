@@ -104,6 +104,13 @@ def test_full_planning_flow(db_conn, tenant, sample, golden):
     pipe.drain()
     path = f"{tenant.office_id}/{tenant.case_id}/simulations/{sim['id']}.xlsx"
     assert tenant.storage.objects[path][:2] == b"PK"
+    # a simulação antiga exporta as premissas com que foi calculada (RAT 0,02), não as atuais do dossiê (0,03)
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+    sheet = load_workbook(BytesIO(tenant.storage.objects[path]))["Premissas"]
+    rat = [r for r in sheet.iter_rows(values_only=True) if r[0] == "folha.rat"]
+    assert [r[4] for r in rat] == ["0.02"]
 
     # regenerar premissas: confirmadas com a mesma sugestão seguem confirmadas; as que deixaram de existir saem
     with db_conn.transaction():

@@ -52,6 +52,8 @@ def sublimit_status(view: SnapshotView, comp: str, rules: RuleSet) -> SublimitSt
     lim = D(rules.elegibilidade["simples"]["sublimite_anual"])
     tol = D(rules.elegibilidade["simples"]["tolerancia_excesso"])
     rbaa = view.value("PGDAS_D", comp, "receita.rbaa", "total") or ZERO
+    # RBA sem a RPA do mês de propósito: excesso acima de 20% produz efeito no mês SEGUINTE ao do excesso
+    # (kb/simples-nacional/concepts/limites-sublimites-e-exclusao.md); no mês do excesso ICMS/ISS seguem no DAS.
     rba = view.value("PGDAS_D", comp, "receita.rba", "total") or ZERO
     return SublimitStatus(in_effect=rbaa > lim or rba > lim * (1 + tol), rba_ytd=rba, rbaa=rbaa)
 

@@ -202,6 +202,10 @@ class Pipeline:
             return f"não calculado — {len(pending)} premissa(s) voltaram a pendente; confirme e peça o cálculo de novo"
         confirmed = [{"key": r["key"], "scope": r["scope"], "value": r["value"]} for r in rows]
         a_hash = assumptions_hash(confirmed)
+        # cópia gravada na simulação: a exportação usa esta, não as premissas atuais do dossiê
+        used = [{"key": r["key"], "scope": r["scope"], "label": r["label"], "suggested_value": r["suggested_value"],
+                 "value": r["value"], "justification": r["justification"],
+                 "confirmed_at": r["confirmed_at"].isoformat() if r["confirmed_at"] else None} for r in rows]
         sha = snap["sha256"].strip()
         existing = db.find_simulation(self.conn, case_id, office_id, sha, a_hash, self.rules.hash)
         if existing is not None:
@@ -209,7 +213,7 @@ class Pipeline:
             return "resultado idêntico a uma simulação existente (mesmo snapshot, premissas e regras)"
         common = dict(case_id=case_id, office_id=office_id, snapshot_id=snap["id"], snapshot_sha=sha,
                       assumptions_hash=a_hash, rules_version=self.rules.version, rules_hash=self.rules.hash,
-                      requested_by=job["payload"].get("requested_by"))
+                      requested_by=job["payload"].get("requested_by"), assumptions=used)
         try:
             result = calculate(SnapshotView(snap["content"]), Assumptions(confirmed), self.rules)
         except NoCompleteCompetence as exc:
@@ -233,8 +237,7 @@ class Pipeline:
         if sim is None:
             return "simulação inexistente"
         lines = db.get_simulation_lines(self.conn, sim["id"], office_id)
-        assumptions = db.get_confirmed_assumption_rows(self.conn, sim["case_id"], office_id)
-        data = build_simulation_xlsx(sim, lines, assumptions)
+        data = build_simulation_xlsx(sim, lines, sim["assumptions"])
         path = simulation_export_path(str(office_id), str(sim["case_id"]), str(sim["id"]))
         self.storage.upload(path, data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         log("simulation.exported", job_id=job["id"], simulation_id=sim["id"], office_id=office_id, bytes=len(data))

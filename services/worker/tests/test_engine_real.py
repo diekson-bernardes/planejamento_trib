@@ -85,3 +85,15 @@ def test_exclusions_reduce_cumulative_base(snapshot_content, rules):
     receita = sum((act.receita for act in acts), Decimal("0"))
     cum = [l for l in lines if "cumulativo" in l.formula]
     assert {l.base for l in cum} == {(receita - Decimal("1000.00")).quantize(Decimal("0.01"))}
+
+
+@pytest.mark.samples
+def test_real_zeroes_pis_and_cofins_independently(snapshot_content, rules):
+    view = SnapshotView(snapshot_content)
+    acts = view.activities("2026-08")
+    overrides = {("pis_cofins_creditos_base", "competencia:2026-08"): "0.00"}
+    for act in acts:
+        overrides[("atividade.tributos_zerados", "atividade:" + act.key)] = ["cofins"]
+    lines = real.month_pis_cofins("2026-08", view, accepted_assumptions(view, rules, overrides), rules)
+    receita = sum((act.receita for act in acts), Decimal("0")).quantize(Decimal("0.01"))
+    assert {l.tax: l.base for l in lines} == {"pis": receita, "cofins": Decimal("0.00")}

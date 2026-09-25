@@ -16,8 +16,8 @@ const SAMPLES = [
   "1.PGDASD-DECLARACAO-37704456202607001.pdf",
   "1.PGDASD-DECLARACAO-37704456202608001.pdf",
   "2.Resumo da Folha 08.pdf",
-  "3.DRE.pdf",
-  "Balancete.pdf",
+  "3.DRE 08.pdf",
+  "4.Balancete 08.pdf",
 ];
 
 function run(label, command, args, { quiet = false, env = {} } = {}) {

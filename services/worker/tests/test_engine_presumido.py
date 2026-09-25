@@ -1,7 +1,12 @@
 """AT-111, AT-112, AT-115: Presumido — caso dourado da KB, LC 224/2025 e trimestre parcial."""
 from decimal import Decimal
 
+import pytest
+
+from conftest import accepted_assumptions
+from worker.engine import presumido
 from worker.engine.presumido import QuarterInput, month_pis_cofins, quarter_lines
+from worker.engine.snapshot import SnapshotView
 
 
 def amounts(lines):
@@ -45,3 +50,19 @@ def test_partial_quarter_uses_months_for_additional(rules):
 def test_other_revenue_added_in_full(rules):
     lines = quarter_lines(QuarterInput("2026-T1", 3, {"comercio_industria": Decimal("900000.00")}, Decimal("10000.00")), rules)
     assert amounts(lines)["irpj"] == Decimal("12300.00")   # (72.000 + 10.000) × 15%
+
+
+@pytest.mark.samples
+def test_pis_and_cofins_zeroed_independently_and_base_never_negative(snapshot_content, rules):
+    """Monofásico só de PIS não isenta a Cofins; exclusão acima da receita zera o tributo sem reduzir o total."""
+    view = SnapshotView(snapshot_content)
+    acts = view.activities("2026-08")
+    receita = sum((act.receita for act in acts), Decimal("0"))
+    only_pis = {("atividade.tributos_zerados", "atividade:" + act.key): ["pis"] for act in acts}
+    lines = presumido.calculate(["2026-08"], view, accepted_assumptions(view, rules, only_pis), rules)
+    base = {l.tax: l.base for l in lines if l.tax in ("pis", "cofins")}
+    assert base["pis"] == Decimal("0.00") and base["cofins"] == receita.quantize(Decimal("0.01"))
+
+    huge = {("pis_cofins_exclusoes", "competencia:2026-08"): "999999999.00"}
+    lines = presumido.calculate(["2026-08"], view, accepted_assumptions(view, rules, huge), rules)
+    assert {l.tax: l.amount for l in lines if l.tax in ("pis", "cofins")} == {"pis": Decimal("0.00"), "cofins": Decimal("0.00")}
