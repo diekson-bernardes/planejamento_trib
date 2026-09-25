@@ -18,6 +18,12 @@ const SAMPLES = [
   "2.Resumo da Folha 08.pdf",
   "3.DRE 08.pdf",
   "4.Balancete 08.pdf",
+  "2.Resumo da Folha 06.pdf",
+  "2.Resumo da Folha 07.pdf",
+  "3.DRE 06.pdf",
+  "3.DRE 07.pdf",
+  "4.Balancete 06.pdf",
+  "4.Balancete 07.pdf",
 ];
 
 function run(label, command, args, { quiet = false, env = {} } = {}) {

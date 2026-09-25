@@ -19,6 +19,16 @@ SAMPLE_FILES = {
     "dre_202608": "3.DRE 08.pdf",
     "balancete_202608": "4.Balancete 08.pdf",
 }
+# folha, DRE e balancete de 06 e 07: com eles as três competências ficam completas (golden motor_202606_08)
+EXTRA_SAMPLE_FILES = {
+    "folha_202606": "2.Resumo da Folha 06.pdf",
+    "folha_202607": "2.Resumo da Folha 07.pdf",
+    "dre_202606": "3.DRE 06.pdf",
+    "dre_202607": "3.DRE 07.pdf",
+    "balancete_202606": "4.Balancete 06.pdf",
+    "balancete_202607": "4.Balancete 07.pdf",
+}
+ALL_SAMPLE_FILES = {**SAMPLE_FILES, **EXTRA_SAMPLE_FILES}
 SAMPLE_CNPJ = "37704456000142"
 
 DEFAULT_MAPPINGS = {
@@ -51,12 +61,12 @@ def samples_dir() -> Path:
 @pytest.fixture(scope="session")
 def sample():
     base = samples_dir()
-    missing = [n for n in SAMPLE_FILES.values() if not (base / n).is_file()]
+    missing = [n for n in ALL_SAMPLE_FILES.values() if not (base / n).is_file()]
     if missing:
         skip_or_fail("amostras ausentes em " + str(base) + " (defina SAMPLES_DIR)")
 
     def load(name: str) -> bytes:
-        return (base / SAMPLE_FILES[name]).read_bytes()
+        return (base / ALL_SAMPLE_FILES[name]).read_bytes()
 
     return load
 
@@ -69,7 +79,7 @@ def build_snapshot_content(load, names=None) -> dict:
     for name in names or SAMPLE_FILES:
         result, checks = parse_document(load(name))
         file_id = "file-" + name
-        files.append({"id": file_id, "original_name": SAMPLE_FILES[name], "doc_type": result.doc_type.value,
+        files.append({"id": file_id, "original_name": ALL_SAMPLE_FILES[name], "doc_type": result.doc_type.value,
                       "competence": result.competence + "-01", "parser_version": result.parser_version})
         for v in result.values:
             values.append({
@@ -108,6 +118,12 @@ def accepted_assumptions(view, rules, overrides: dict | None = None, extra_month
 @pytest.fixture(scope="session")
 def snapshot_content(sample):
     return build_snapshot_content(sample)
+
+
+@pytest.fixture(scope="session")
+def snapshot_content_06_08(sample):
+    """Os 12 documentos: 06, 07 e 08/2026 completos."""
+    return build_snapshot_content(sample, ALL_SAMPLE_FILES)
 
 
 @pytest.fixture(scope="session")

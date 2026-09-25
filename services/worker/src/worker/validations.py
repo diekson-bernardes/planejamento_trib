@@ -87,10 +87,33 @@ def _folha(values: list[ExtractedValue]) -> list[ValidationResult]:
     return out
 
 
+def dre_groups(values: list) -> tuple[list, list]:
+    """Contas da DRE separadas pelo grupo em que aparecem: antes do total "RECEITAS" → receitas; depois → despesas.
+
+    A natureza não basta: uma conta credora dentro das despesas (ex.: recuperação de vale-transporte) reduz a
+    despesa, não é receita. Aceita ExtractedValue ou dicts do snapshot (mesmos campos)."""
+    get = (lambda v, k: v[k]) if values and isinstance(values[0], dict) else getattr
+    receitas, despesas = [], []
+    current = receitas
+    for v in values:
+        if get(v, "field_key") == "total.RECEITAS":
+            current = despesas
+        elif get(v, "section") == "conta":
+            current.append(v)
+    return receitas, despesas
+
+
+def signed_total(contas: list, positive: str) -> Decimal:
+    """Soma com sinal: natureza `positive` soma, a oposta subtrai."""
+    get = (lambda v, k: v[k]) if contas and isinstance(contas[0], dict) else getattr
+    return sum((Decimal(get(v, "value")) if get(v, "nature") == positive else -Decimal(get(v, "value"))
+                for v in contas), ZERO)
+
+
 def _dre(values: list[ExtractedValue]) -> list[ValidationResult]:
-    contas = [v for v in values if v.section == "conta"]
-    receitas = sum((v.value for v in contas if v.nature == "C"), ZERO)
-    despesas = sum((v.value for v in contas if v.nature == "D"), ZERO)
+    grupo_receitas, grupo_despesas = dre_groups(values)
+    receitas = signed_total(grupo_receitas, "C")
+    despesas = signed_total(grupo_despesas, "D")
     out: list[ValidationResult] = []
     r = _get(values, "resultado.receitas")
     d = _get(values, "resultado.despesas_custos")

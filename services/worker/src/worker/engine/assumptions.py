@@ -7,6 +7,7 @@ from worker.engine.activities import ActivityProfile, declared_zero_taxes, match
 from worker.engine.memory import D, ZERO, canonical_hash, money
 from worker.engine.rules import RuleSet
 from worker.engine.snapshot import SnapshotView, previous_months
+from worker.validations import dre_groups, signed_total
 
 CASE = "caso"
 LOCAL_TAX_ACCOUNT = re.compile(r"\b(icms|iss)\b")   # conta de ICMS/ISS na DRE (palavra inteira)
@@ -93,12 +94,13 @@ def suggest(view: SnapshotView, rules: RuleSet, confirmed: "Assumptions | None" 
             "decimal", _dec(D(iss_das["value"]) if iss_das else ZERO),
             {**view.origin(iss_das), "note": "proxy: ISS recolhido no DAS; substituir pelo ISS devido no município"},
         ))
-        vendas = {v["account_code"] for v in view.dre_accounts(comp) if "vendas" in (v.get("label") or "").lower()}
-        outras = [v for v in view.dre_accounts(comp) if v.get("nature") == "C" and v["account_code"] not in vendas]
+        # só contas do grupo de receitas: credora dentro das despesas (ex.: recuperação de vale-transporte) não é receita
+        grupo_receitas, _ = dre_groups(view.values("DRE_ALTERDATA", comp))
+        outras = [v for v in grupo_receitas if "vendas" not in (v.get("label") or "").lower()]
         out.append(Suggestion(
             "outras_receitas", scope, "receitas", f"Outras receitas tributáveis ({comp}) — financeiras, ganhos",
-            "decimal", _dec(sum((D(v["value"]) for v in outras), ZERO)),
-            {"source": "snapshot", "note": "contas credoras da DRE exceto vendas",
+            "decimal", _dec(signed_total(outras, "C")),
+            {"source": "snapshot", "note": "contas do grupo de receitas da DRE exceto vendas",
              "accounts": [v["account_code"] for v in outras]},
         ))
         out.append(Suggestion(

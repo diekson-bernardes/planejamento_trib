@@ -11,8 +11,8 @@ from worker.engine.snapshot import SnapshotView
 pytestmark = pytest.mark.samples
 
 
-def golden_assumptions(view, rules, golden):
-    g = golden("motor_202608")
+def golden_assumptions(view, rules, golden, name="motor_202608"):
+    g = golden(name)
     return accepted_assumptions(view, rules, {(k, "caso"): v for k, v in g["assumption_overrides"].items()}), g
 
 
@@ -22,9 +22,13 @@ def test_complete_competences(snapshot_content):
     assert view.excluded_competences() == ["2026-06", "2026-07"]
 
 
-def test_matches_approved_golden(snapshot_content, rules, golden):
-    view = SnapshotView(snapshot_content)
-    a, g = golden_assumptions(view, rules, golden)
+@pytest.mark.parametrize("name, content_fixture", [
+    ("motor_202608", "snapshot_content"),            # só 08/2026 completa
+    ("motor_202606_08", "snapshot_content_06_08"),   # 06, 07 e 08/2026 completas; T2 e T3 parciais
+])
+def test_matches_approved_golden(name, content_fixture, rules, golden, request):
+    view = SnapshotView(request.getfixturevalue(content_fixture))
+    a, g = golden_assumptions(view, rules, golden, name)
     assert g["approved_by"] and g["approved_at"]          # AT-126: só vale com aprovação registrada
     res = calculate(view, a, rules)
     assert res.rules_version == g["rules_version"]
@@ -35,6 +39,8 @@ def test_matches_approved_golden(snapshot_content, rules, golden):
         assert str(got.total) == expected["total"], regime
         assert {k: str(v) for k, v in sorted(got.by_tax.items())} == expected["by_tax"], regime
         assert got.partial_periods == expected["partial_periods"], regime
+        if "by_period" in expected:
+            assert {k: str(v) for k, v in got.by_period.items()} == expected["by_period"], regime
 
 
 def test_simples_total_equals_declared_das(snapshot_content, rules, golden):
