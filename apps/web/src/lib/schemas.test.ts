@@ -117,3 +117,20 @@ describe("decisão tributária (ciclo 3)", () => {
     expect(thresholdSchema.safeParse({ threshold: 0.05 }).success).toBe(true);
   });
 });
+
+describe("Reforma 2027 (ciclo 4)", () => {
+  const uuid = "3f1d2c4b-5a6e-4f70-8a9b-0c1d2e3f4a5b";
+
+  it("aceita o Livro de Apuração do ICMS na reclassificação, mas não o exige por competência", async () => {
+    const { reclassifySchema, REQUIRED_DOC_TYPES } = await import("@/lib/schemas");
+    expect(reclassifySchema.safeParse({ fileId: uuid, docType: "LIVRO_ICMS_ALTERDATA" }).success).toBe(true);
+    expect(REQUIRED_DOC_TYPES).not.toContain("LIVRO_ICMS_ALTERDATA");
+    expect(REQUIRED_DOC_TYPES).toHaveLength(4);
+  });
+
+  it("aceita a conta de compras de mercadorias (R7) no mapeamento do balancete", async () => {
+    const { mappingSchema } = await import("@/lib/schemas");
+    expect(mappingSchema.safeParse({ target: "compras_mercadorias", docType: "BALANCETE_ALTERDATA", accountCode: "13101" }).success).toBe(true);
+    expect(mappingSchema.safeParse({ target: "compras_servicos", docType: "BALANCETE_ALTERDATA", accountCode: "1" }).success).toBe(false);
+  });
+});

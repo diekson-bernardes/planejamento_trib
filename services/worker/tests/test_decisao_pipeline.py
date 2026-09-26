@@ -42,8 +42,9 @@ def prepare(db_conn, tenant, sample):
 
 def confirm_all(db_conn, tenant, golden, only_keys=None):
     decl = golden("motor_202606_08")["assumption_overrides"]
-    rows = db_conn.execute("select id, key, suggested_value from assumptions where case_id = %s and status = 'pending'",
-                           (tenant.case_id,)).fetchall()
+    # o grupo reforma_2027 fica pendente: não bloqueia a projeção de 2026 (ciclo 4)
+    rows = db_conn.execute("select id, key, suggested_value from assumptions where case_id = %s and status = 'pending' "
+                           "and grp <> 'reforma_2027'", (tenant.case_id,)).fetchall()
     for r in rows:
         if only_keys is not None and r["key"] not in only_keys:
             continue

@@ -12,6 +12,7 @@ ANCHORS: list[tuple[DocType, tuple[str, ...], str]] = [
     (DocType.FOLHA_ALTERDATA, ("ADICIONAIS / DESCONTOS",), "Período:"),
     (DocType.DRE_ALTERDATA, ("Demonstração do Resultado do Exercício",), "Demonstração do Resultado"),
     (DocType.BALANCETE_ALTERDATA, ("Balancete Analítico",), "Balancete Analítico"),
+    (DocType.LIVRO_ICMS_ALTERDATA, ("R E G I S T R O D E A P U R A Ç Ã O D O I C M S",), "Mês ou Período/Ano"),
 ]
 
 
@@ -56,7 +57,7 @@ def classify(rows: list[Row], forced: DocType | None = None) -> Classification:
 
     cnpj = None
     for r in page1:
-        if "CNPJ" in r.text:
+        if "CNPJ" in r.text.replace(".", ""):   # "CNPJ" ou "C.N.P.J." (Livro de Apuração)
             cnpj = normalize_cnpj(r.text)
             if cnpj:
                 break

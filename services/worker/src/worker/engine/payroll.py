@@ -52,7 +52,7 @@ def charges(regime: str, comp: str, view: SnapshotView, a: Assumptions, rules: R
                       f"empregados {brl(emp)}{suffix} × RAT {pct(rat, 2)} × FAP {fap}{label}",
                       rules.ref("encargos", "rat"), origin={"base": o_emp, "rat": a.origin("folha.rat"), "fap": a.origin("folha.fap")},
                       verified=verified))
-    if regime != "SIMPLES" or rules.encargos["simples_anexo_iv"]["terceiros"]:
+    if not regime.startswith("SIMPLES") or rules.encargos["simples_anexo_iv"]["terceiros"]:
         lines.append(Line(regime, comp, "terceiros", money(emp * share), terceiros, money(emp * share * terceiros),
                           f"empregados {brl(emp)}{suffix} × terceiros {pct(terceiros, 2)}{label}",
                           rules.ref("encargos", "terceiros"), origin={"base": o_emp, "aliquota": a.origin("folha.terceiros")},

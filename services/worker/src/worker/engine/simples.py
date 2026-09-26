@@ -2,9 +2,10 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
+from worker.engine import cbs_ibs
 from worker.engine.assumptions import Assumptions, comp_scope
 from worker.engine.eligibility import sublimit_status
-from worker.engine.memory import D, ZERO, Line, brl, money, pct
+from worker.engine.memory import HIBRIDO, D, ZERO, Line, brl, money, pct
 from worker.engine.payroll import charges
 from worker.engine.rules import Band, MissingRule, RuleSet
 from worker.engine.snapshot import SnapshotView, previous_months
@@ -95,8 +96,12 @@ def band_rates(anexo_code: str, rbt12: Decimal, rules: RuleSet, zeroed: set, sub
     return out, band, efetiva
 
 
-def calculate_month(comp: str, view: SnapshotView, a: Assumptions, rules: RuleSet) -> tuple[list[Line], list[str]]:
-    """Linhas do DAS da competência + encargos fora do DAS (Anexo IV). Levanta MissingRule se faltar regra."""
+def calculate_month(comp: str, view: SnapshotView, a: Assumptions, rules: RuleSet, hybrid: bool = False,
+                    saldo: dict | None = None) -> tuple[list[Line], list[str]]:
+    """Linhas do DAS da competência + encargos fora do DAS (Anexo IV). Levanta MissingRule se faltar regra.
+
+    `hybrid` (2027+): CBS/IBS saem do DAS e são apurados no regime regular (débito − crédito), com `saldo` credor."""
+    regime = HIBRIDO if hybrid else "SIMPLES"
     alerts = []
     rbt = compute_rbt12(view, comp)
     if rbt.declared is not None and money(rbt.declared) != money(rbt.value):
@@ -107,11 +112,12 @@ def calculate_month(comp: str, view: SnapshotView, a: Assumptions, rules: RuleSe
         raise MissingRule(f"{comp}: PGDAS-D sem atividades")
     lines: list[Line] = []
     rbt_origin = {"source": "snapshot", "field_key": "receita_anterior.*", "competence": comp, "rbt12_source": rbt.source}
-    lines.append(Line("SIMPLES", comp, "rbt12", money(rbt.value), ZERO, money(rbt.value),
+    lines.append(Line(regime, comp, "rbt12", money(rbt.value), ZERO, money(rbt.value),
                       "soma das receitas dos 12 meses anteriores (série 2.2 do PGDAS-D)" if rbt.source == "serie"
                       else "RBT12 declarado no PGDAS-D", rules.ref("simples", "rbt12"), kind="informativo", origin=rbt_origin))
     total_receita = sum((act.receita for act in activities), ZERO)
     anexo_iv_receita = ZERO
+    exempt = ZERO
     for act in activities:
         profile = a.profile(act.key)
         if profile is None:
@@ -124,24 +130,35 @@ def calculate_month(comp: str, view: SnapshotView, a: Assumptions, rules: RuleSe
             folha = a.decimal("folha.folha_12m", comp_scope(comp))
             r = folha / rbt.value if rbt.value else ZERO
             anexo = "III" if r >= D(rules.simples["fator_r_minimo"]) else "V"
-            lines.append(Line("SIMPLES", comp, "fator_r", money(folha), r, ZERO,
+            lines.append(Line(regime, comp, "fator_r", money(folha), r, ZERO,
                               f"folha 12m {brl(folha)} ÷ RBT12 {brl(rbt.value)} = {pct(r, 2)} → Anexo {anexo}",
                               rules.ref("simples", "fator_r_minimo"), kind="informativo", activity=act.key,
                               origin=a.origin("folha.folha_12m", comp_scope(comp))))
         if anexo == "IV":
             anexo_iv_receita += act.receita
-        rates, band, efetiva = band_rates(anexo, rbt.value, rules, a.zeroed(act.key), sub.in_effect)
+        zeroed = set(a.zeroed(act.key))
+        if rules.consumo:
+            if zeroed & set(rules.simples.get("cbs_substitui", [])):
+                zeroed.add("cbs")           # monofásico de PIS/Cofins → parcela de CBS zerada (hipótese)
+                exempt += act.receita
+            if hybrid:
+                zeroed |= {"cbs", "ibs"}    # híbrido: CBS/IBS fora do DAS
+        rates, band, efetiva = band_rates(anexo, rbt.value, rules, zeroed, sub.in_effect)
         for tax, rate, ref, formula, verified in rates:
-            lines.append(Line("SIMPLES", comp, tax, act.receita, rate, money(act.receita * rate),
+            lines.append(Line(regime, comp, tax, act.receita, rate, money(act.receita * rate),
                               f"receita {brl(act.receita)} × ({formula})", ref, origin=act.origin,
                               activity=act.key, verified=verified and rules.verified.get("simples", False)))
     if sub.in_effect:
         for tax, key in (("icms", "icms_regime_normal"), ("iss", "iss_regime_normal")):
             value = a.decimal(key, comp_scope(comp))
-            lines.append(Line("SIMPLES", comp, tax, value, ZERO, money(value),
+            lines.append(Line(regime, comp, tax, value, ZERO, money(value),
                               f"{tax.upper()} fora do DAS (sublimite em efeito) — premissa", rules.ref("simples", "sublimite"),
                               origin=a.origin(key, comp_scope(comp)), verified=False))
     if anexo_iv_receita > 0 and total_receita > 0:
         share = anexo_iv_receita / total_receita
-        lines.extend(charges("SIMPLES", comp, view, a, rules, share, " (Anexo IV: CPP fora do DAS)"))
+        lines.extend(charges(regime, comp, view, a, rules, share, " (Anexo IV: CPP fora do DAS)"))
+    if hybrid:
+        icms_iss = sum((l.amount for l in lines if l.tax in LOCAL_TAXES and l.kind == "tributo"), ZERO)   # DAS e fora dele
+        lines += cbs_ibs.month_lines(regime, comp, total_receita, exempt, a, rules, saldo if saldo is not None else {},
+                                     icms_iss)
     return lines, alerts

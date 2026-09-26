@@ -8,6 +8,12 @@ CENT = Decimal("0.01")
 ZERO = Decimal("0")
 
 REGIMES = ("SIMPLES", "PRESUMIDO", "REAL")
+HIBRIDO = "SIMPLES_HIBRIDO"          # 2027+: Simples com CBS/IBS fora do DAS (regime regular)
+
+
+def regimes_for(rules) -> tuple:
+    """Regimes calculados no exercício das regras: os três de sempre + o Simples híbrido quando previsto."""
+    return REGIMES + ((HIBRIDO,) if rules.simples.get("hibrido") else ())
 
 
 def money(value: Decimal) -> Decimal:

@@ -17,6 +17,7 @@ const TARGET_LABEL: Record<string, string> = {
   inss_a_pagar: "INSS a Pagar (R3)",
   fgts_a_pagar: "FGTS a Pagar (R4)",
   salarios_a_pagar: "Salários a Pagar (R5)",
+  compras_mercadorias: "Compras de Mercadorias (R7)",
 };
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ erro?: string; ok?: string }> }) {

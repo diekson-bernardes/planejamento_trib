@@ -15,15 +15,15 @@ from worker.errors import (
     CnpjMismatch, HashMismatch, HasAdjustments, LayoutNotRecognized, NoTextLayer, NotPdf,
     Unclassified, WorkerError,
 )
-from worker.config import load_settings
-from worker.engine.assumptions import Assumptions, assumptions_hash, suggest
+from worker.config import decision_params_path, load_settings
+from worker.engine.assumptions import REFORM_GROUP, Assumptions, assumptions_hash, suggest
 from worker.engine.calculate import NoCompleteCompetence, calculate
 from worker.engine.decision import project
 from worker.engine.decision_params import DecisionParams, load_decision_params
 from worker.engine.projection import ProjectionError
 from worker.report_pdf import build_recommendation_pdf, report_data, sha256
 from worker.engine.memory import line_dict
-from worker.engine.rules import RuleSet, load_rules
+from worker.engine.rules import RuleSet, RulesError, load_rules
 from worker.engine.snapshot import SnapshotView
 from worker.export_xlsx import build_simulation_xlsx, build_xlsx, export_path, simulation_export_path
 from worker.models import DocType, ParseResult
@@ -78,6 +78,29 @@ def default_rules() -> RuleSet:
 @lru_cache(maxsize=1)
 def default_decision_params() -> DecisionParams:
     return load_decision_params(load_settings().decision_params)
+
+
+@lru_cache(maxsize=8)
+def rules_for(year: int) -> RuleSet | None:
+    """Regras de outro exercício (ex.: 2027, Reforma); None quando a pasta não existe."""
+    settings = load_settings()
+    try:
+        return load_rules(settings.rules_dir, str(year))
+    except RulesError:
+        return None
+
+
+@lru_cache(maxsize=8)
+def decision_params_for(year: int) -> DecisionParams:
+    return load_decision_params(decision_params_path(load_settings(), year))
+
+
+REFORM_YEAR = 2027
+
+
+def blocking(rows: list[dict], year: int) -> list[dict]:
+    """Pendências que bloqueiam o exercício: o grupo da Reforma só conta no próprio exercício."""
+    return [r for r in rows if r["status"] != "confirmed" and (r.get("grp") != REFORM_GROUP or year >= REFORM_YEAR)]
 
 
 class Pipeline:
@@ -196,7 +219,8 @@ class Pipeline:
         if snap is None:
             return "dossiê não homologado"
         current = [r for r in db.load_assumptions(self.conn, case_id, office_id) if r["status"] == "confirmed"]
-        rows = [s.as_row() for s in suggest(SnapshotView(snap["content"]), self.rules, Assumptions(current))]
+        rows = [s.as_row() for s in suggest(SnapshotView(snap["content"]), self.rules, Assumptions(current),
+                                            rules_for(REFORM_YEAR))]
         db.upsert_suggestions(self.conn, case_id, office_id, rows)
         log("suggest.generated", job_id=job["id"], case_id=case_id, office_id=office_id, assumptions=len(rows),
             rules_version=self.rules.version)
@@ -211,11 +235,12 @@ class Pipeline:
         if snap is None:
             return "dossiê não homologado"
         rows = db.load_assumptions(self.conn, case_id, office_id)
-        pending = [r for r in rows if r["status"] != "confirmed"]
+        pending = blocking(rows, self.rules.exercise)
         if pending:   # premissa voltou a pendente depois do pedido (ex.: sugestões regeneradas)
             log("simulation.skipped", job_id=job["id"], case_id=case_id, pending=len(pending))
             return f"não calculado — {len(pending)} premissa(s) voltaram a pendente; confirme e peça o cálculo de novo"
-        confirmed = [{"key": r["key"], "scope": r["scope"], "value": r["value"]} for r in rows]
+        confirmed = [{"key": r["key"], "scope": r["scope"], "value": r["value"]} for r in rows
+                     if r["status"] == "confirmed" or r["grp"] != REFORM_GROUP]
         a_hash = assumptions_hash(confirmed)
         # cópia gravada na simulação: a exportação usa esta, não as premissas atuais do dossiê
         used = [{"key": r["key"], "scope": r["scope"], "label": r["label"], "suggested_value": r["suggested_value"],
@@ -266,8 +291,13 @@ class Pipeline:
         snap = db.get_case_snapshot(self.conn, case_id, office_id)
         if snap is None:
             return "dossiê não homologado"
+        year = int(job["payload"].get("year") or self.rules.exercise)
+        rules = self.rules if year == self.rules.exercise else rules_for(year)
+        if rules is None:
+            return f"sem regras para o exercício {year}"
+        decision = self.decision if year == self.rules.exercise else decision_params_for(year)
         rows = db.load_assumptions(self.conn, case_id, office_id)
-        pending = [r for r in rows if r["status"] != "confirmed"]
+        pending = blocking(rows, year)
         # prévia: premissas pendentes entram com o valor sugerido e bloqueiam a recomendação
         used = [{"key": r["key"], "scope": r["scope"], "label": r["label"],
                  "value": r["value"] if r["status"] == "confirmed" else r["suggested_value"],
@@ -279,18 +309,18 @@ class Pipeline:
                                     "status": u["status"]} for u in used])
         threshold = db.load_decision_threshold(self.conn, office_id)
         sha = snap["sha256"].strip()
-        existing = db.find_projection(self.conn, case_id, office_id, sha, a_hash, self.rules.hash,
-                                      self.decision.hash, threshold)
+        existing = db.find_projection(self.conn, case_id, office_id, sha, a_hash, rules.hash,
+                                      decision.hash, threshold)
         if existing is not None:
             log("projection.reused", job_id=job["id"], case_id=case_id, projection_id=existing["id"])
             return "resultado idêntico a uma projeção existente (mesmo snapshot, premissas, regras e política)"
         common = dict(case_id=case_id, office_id=office_id, snapshot_id=snap["id"], snapshot_sha=sha,
-                      assumptions_hash=a_hash, rules_version=self.rules.version, rules_hash=self.rules.hash,
-                      decision_version=self.decision.version, decision_hash=self.decision.hash, threshold=threshold,
+                      assumptions_hash=a_hash, rules_version=rules.version, rules_hash=rules.hash,
+                      decision_version=decision.version, decision_hash=decision.hash, threshold=threshold,
                       assumptions=used, requested_by=job["payload"].get("requested_by"))
         view = SnapshotView(snap["content"])
         try:
-            res = project(view, Assumptions(used), self.rules, self.decision, threshold, blockers)
+            res = project(view, Assumptions(used), rules, decision, threshold, blockers, self.decision)
         except (ProjectionError, NoCompleteCompetence) as exc:
             code = getattr(exc, "code", "PROJECTION_BLOCKED")
             db.save_projection(self.conn, **common, year=0, status="failed", result={}, sensitivity=[],

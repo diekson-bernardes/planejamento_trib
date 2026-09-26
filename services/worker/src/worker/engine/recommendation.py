@@ -15,8 +15,9 @@ def brl(value: Decimal) -> str:
 
 
 RECOMENDADO, INCONCLUSIVO, BLOQUEADO = "recomendado", "inconclusivo", "bloqueado"
-REGIME_NAME = {"SIMPLES": "Simples Nacional", "PRESUMIDO": "Lucro Presumido", "REAL": "Lucro Real"}
-TAX_NAME = {"irpj": "IRPJ", "adicional_irpj": "adicional de IRPJ", "csll": "CSLL", "pis": "PIS", "cofins": "Cofins",
+REGIME_NAME = {"SIMPLES": "Simples Nacional", "PRESUMIDO": "Lucro Presumido", "REAL": "Lucro Real",
+               "SIMPLES_HIBRIDO": "Simples Nacional (híbrido: CBS/IBS no regime regular)"}
+TAX_NAME = {"cbs": "CBS", "ibs": "IBS", "irpj": "IRPJ", "adicional_irpj": "adicional de IRPJ", "csll": "CSLL", "pis": "PIS", "cofins": "Cofins",
             "icms": "ICMS", "iss": "ISS", "ipi": "IPI", "cpp": "CPP", "rat": "RAT", "terceiros": "terceiros"}
 
 
@@ -55,8 +56,8 @@ class Recommendation:
         }
 
 
-def compliance_costs(a: Assumptions) -> dict:
-    return {r: a.decimal("conformidade.custo_anual", "regime:" + r) for r in REGIMES
+def compliance_costs(a: Assumptions, regimes=REGIMES) -> dict:
+    return {r: a.decimal("conformidade.custo_anual", "regime:" + r) for r in regimes
             if a.raw("conformidade.custo_anual", "regime:" + r) is not None}
 
 
@@ -64,7 +65,7 @@ def recommend(sim, sensitivity: list, a: Assumptions, params: DecisionParams, th
               annual_revenue: Decimal, current_regime: str | None, blockers: list,
               extra_caveats: list | None = None) -> Recommendation:
     rec = Recommendation(status=BLOQUEADO, threshold=threshold, current_regime=current_regime,
-                         compliance=compliance_costs(a), blockers=list(blockers))
+                         compliance=compliance_costs(a, tuple(sim.regimes)), blockers=list(blockers))
     rec.caveats = list(params.caveats) + list(extra_caveats or [])
     for regime, rr in sim.regimes.items():
         if rr.status != "calculado":

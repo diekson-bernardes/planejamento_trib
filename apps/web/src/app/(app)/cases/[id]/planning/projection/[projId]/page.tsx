@@ -10,13 +10,13 @@ import {
   type RecommendationRow,
 } from "@/components/RecommendationPanel";
 import { SensitivityTable, type SensitivityRow } from "@/components/SensitivityTable";
-import { formatDateTime, MONTH_ORIGIN } from "@/lib/format";
+import { formatDateTime, MONTH_ORIGIN, orderedRegimes } from "@/lib/format";
 import { getSessionContext } from "@/lib/supabase/server";
 
 type ProjectionSummary = {
   year: number;
   origins: Record<string, string>;
-  base: { receita_anual: string; margem_anual: string };
+  base: { receita_anual: string; margem_anual: string; ano_base?: number; crescimento?: string };
   simulation: SimulationResultView;
 };
 
@@ -86,8 +86,11 @@ export default async function ProjectionPage({
       {erro && <p role="alert" className="alert-error">{erro}</p>}
       {ok && <p role="status" className="alert-success">{ok}</p>}
       <p className="alert-warning">
-        Comparação do exercício de {result.year} com as regras de {result.year}. A partir de 2027 valem as regras de transição da
-        Reforma Tributária, ainda não calculadas. A recomendação só vai ao cliente após aprovação do responsável técnico.
+        Comparação do exercício de {result.year} com as regras de {result.year}.{" "}
+        {result.year >= 2027
+          ? `Exercício projetado a partir de ${String(result.base?.ano_base ?? result.year - 1)} com crescimento informado; CBS e IBS substituem PIS/Cofins (alíquotas informadas pelo escritório) e o Simples híbrido é a quarta alternativa. Mix de vendas, transição 2029–2033 e Imposto Seletivo ficam fora.`
+          : "A partir de 2027 valem as regras da Reforma Tributária: use “Projetar 2027” no planejamento."}{" "}
+        A recomendação só vai ao cliente após aprovação do responsável técnico.
       </p>
 
       {rec && (
@@ -111,7 +114,7 @@ export default async function ProjectionPage({
           {Object.entries(MONTH_ORIGIN).map(([, o]) => `${o.short} = ${o.label}`).join(" · ")}.
           IRPJ/CSLL do Presumido e do Real são trimestrais (colunas T1–T4).
         </p>
-        {["SIMPLES", "PRESUMIDO", "REAL"].filter((r) => sim.regimes[r]?.status === "calculado").map((r) => (
+        {orderedRegimes(sim.regimes).filter((r) => sim.regimes[r]?.status === "calculado").map((r) => (
           <ProjectionTable key={r} regime={r} year={result.year} lines={lines} origins={result.origins} />
         ))}
       </section>

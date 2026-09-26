@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
+from worker.engine import cbs_ibs
 from worker.engine.assumptions import Assumptions, comp_scope
 from worker.engine.memory import D, ZERO, Line, brl, money, pct
 from worker.engine.payroll import charges
@@ -113,6 +114,7 @@ def lc224_excess(view: SnapshotView, period: str, comps: list[str], quarter_reve
 def calculate(comps: list[str], view: SnapshotView, a: Assumptions, rules: RuleSet) -> list[Line]:
     lc = rules.presumido["lc224"]
     lines: list[Line] = []
+    saldo_cbs: dict = {}
     for period, months in group_quarters(comps).items():
         revenue: dict = {}
         outras = ZERO
@@ -131,11 +133,16 @@ def calculate(comps: list[str], view: SnapshotView, a: Assumptions, rules: RuleS
                     monofasica[tax] += act.receita
             outras += a.decimal("outras_receitas", comp_scope(comp))
             exclusoes = a.decimal("pis_cofins_exclusoes", comp_scope(comp))
-            lines += month_pis_cofins(
-                comp, {t: receita_bruta - monofasica[t] - exclusoes for t in monofasica}, rules,
-                {t: f"(receita bruta {brl(receita_bruta)} − monofásica {brl(monofasica[t])} − exclusões {brl(exclusoes)})"
-                 for t in monofasica},
-                a.origin("pis_cofins_exclusoes", comp_scope(comp)))
+            if rules.consumo:   # 2027+: CBS/IBS não cumulativos no lugar do PIS/Cofins cumulativo
+                exempt = max(monofasica.values())
+                icms_iss = a.decimal("icms_regime_normal", comp_scope(comp)) + a.decimal("iss_regime_normal", comp_scope(comp))
+                lines += cbs_ibs.month_lines("PRESUMIDO", comp, receita_bruta, exempt, a, rules, saldo_cbs, icms_iss)
+            else:
+                lines += month_pis_cofins(
+                    comp, {t: receita_bruta - monofasica[t] - exclusoes for t in monofasica}, rules,
+                    {t: f"(receita bruta {brl(receita_bruta)} − monofásica {brl(monofasica[t])} − exclusões {brl(exclusoes)})"
+                     for t in monofasica},
+                    a.origin("pis_cofins_exclusoes", comp_scope(comp)))
             for tax, key in (("icms", "icms_regime_normal"), ("iss", "iss_regime_normal")):
                 value = a.decimal(key, comp_scope(comp))
                 lines.append(Line("PRESUMIDO", comp, tax, value, ZERO, money(value), f"{tax.upper()} no regime normal — premissa",

@@ -1385,7 +1385,10 @@ export type Database = {
       }
       request_calculation: { Args: { p_case_id: string }; Returns: undefined }
       request_planning: { Args: { p_case_id: string }; Returns: undefined }
-      request_projection: { Args: { p_case_id: string }; Returns: undefined }
+      request_projection: {
+        Args: { p_case_id: string; p_year?: number }
+        Returns: undefined
+      }
       request_report: { Args: { p_id: string }; Returns: undefined }
       request_simulation_export: {
         Args: { p_simulation_id: string }

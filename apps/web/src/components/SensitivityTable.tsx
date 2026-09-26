@@ -5,6 +5,7 @@ export type SensitivityRow = {
   variavel: string;
   rotulo: string;
   tipo: "multiplicador" | "absoluto";
+  unidade?: "fracao";          // multiplicador sobre uma alíquota (ex.: CBS de 2027): valor em %
   base_valor: string | null;
   virada_valor: string | null;
   novo_lider: string | null;
@@ -17,7 +18,7 @@ export type SensitivityRow = {
 
 function value(row: SensitivityRow, v: string | null) {
   if (v === null) return "—";
-  return row.tipo === "multiplicador" ? `R$ ${formatBRL(v)}` : formatPct(v);
+  return row.tipo === "multiplicador" && row.unidade !== "fracao" ? `R$ ${formatBRL(v)}` : formatPct(v);
 }
 
 /** Ponto de virada por variável: valor base, virada (ou "sem virada"), novo líder, distância, robustez e limite jurídico. */

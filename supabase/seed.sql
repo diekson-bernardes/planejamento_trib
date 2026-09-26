@@ -52,5 +52,6 @@ cross join (values
   ('simples_a_recolher', 'BALANCETE_ALTERDATA', '20308'),
   ('inss_a_pagar',       'BALANCETE_ALTERDATA', '20403'),
   ('fgts_a_pagar',       'BALANCETE_ALTERDATA', '20405'),
-  ('salarios_a_pagar',   'BALANCETE_ALTERDATA', '20401')
+  ('salarios_a_pagar',   'BALANCETE_ALTERDATA', '20401'),
+  ('compras_mercadorias', 'BALANCETE_ALTERDATA', '13101')
 ) as m(target, doc_type, code);

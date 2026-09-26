@@ -37,8 +37,9 @@ def prepare_case(db_conn, tenant, sample):
 
 def confirm_all(db_conn, tenant, golden, overrides: dict | None = None):
     decl = golden("motor_202608")["assumption_overrides"]
-    rows = db_conn.execute("select id, key, scope, suggested_value from assumptions where case_id = %s",
-                           (tenant.case_id,)).fetchall()
+    # o grupo reforma_2027 fica pendente de propósito: não bloqueia o cálculo de 2026 (ciclo 4)
+    rows = db_conn.execute("select id, key, scope, suggested_value from assumptions where case_id = %s "
+                           "and grp <> 'reforma_2027'", (tenant.case_id,)).fetchall()
     for r in rows:
         value = r["suggested_value"]
         reason = None
@@ -120,8 +121,8 @@ def test_full_planning_flow(db_conn, tenant, sample, golden):
             "'Obsoleta', 'profile', 'null', '{}', '{}', 'confirmed')", (tenant.office_id, tenant.case_id))
     as_user(db_conn, tenant.user_id, "select request_planning(%s)", (tenant.case_id,))
     pipe.drain()
-    after = db_conn.execute("select scope, status from assumptions where case_id = %s", (tenant.case_id,)).fetchall()
-    assert len(after) == count and all(r["status"] == "confirmed" for r in after)
+    after = db_conn.execute("select scope, status, grp from assumptions where case_id = %s", (tenant.case_id,)).fetchall()
+    assert len(after) == count and all(r["status"] == "confirmed" for r in after if r["grp"] != "reforma_2027")
     assert not [r for r in after if r["scope"] == "atividade:obsoleta"]
 
 

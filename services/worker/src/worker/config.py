@@ -22,6 +22,13 @@ class Settings(BaseModel):
     decision_params: str = str(DEFAULT_RULES_DIR / "decisao.json")
 
 
+def decision_params_path(settings: "Settings", year: int) -> str:
+    """Política de decisão do exercício: `decisao.json` (2026) ou `decisao_<ano>.json` na mesma pasta."""
+    if year <= 2026:
+        return settings.decision_params
+    return os.path.join(os.path.dirname(settings.decision_params), f"decisao_{year}.json")
+
+
 def load_settings() -> Settings:
     return Settings(
         database_url=os.environ.get(

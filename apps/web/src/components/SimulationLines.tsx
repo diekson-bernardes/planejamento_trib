@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 
-import { formatBRL, REGIME_LABEL, TAX_LABEL } from "@/lib/format";
+import { formatBRL, orderedRegimes, REGIME_LABEL, TAX_LABEL } from "@/lib/format";
 
 export type LineRow = {
   regime: string;
@@ -39,7 +39,7 @@ export function SimulationLines({ lines }: { lines: LineRow[] }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Regime">
-        {["SIMPLES", "PRESUMIDO", "REAL"].map((r) => (
+        {orderedRegimes(Array.from(new Set(lines.map((l) => l.regime)))).map((r) => (
           <button key={r} type="button" role="tab" aria-selected={regime === r}
             className={regime === r ? "btn-primary px-3 py-1" : "btn-secondary px-3 py-1"} onClick={() => setRegime(r)}>
             {REGIME_LABEL[r]}

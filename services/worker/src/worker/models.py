@@ -11,6 +11,7 @@ class DocType(StrEnum):
     FOLHA_ALTERDATA = "FOLHA_ALTERDATA"
     DRE_ALTERDATA = "DRE_ALTERDATA"
     BALANCETE_ALTERDATA = "BALANCETE_ALTERDATA"
+    LIVRO_ICMS_ALTERDATA = "LIVRO_ICMS_ALTERDATA"     # opcional: não entra na definição de competência completa
 
 
 @dataclass(frozen=True)

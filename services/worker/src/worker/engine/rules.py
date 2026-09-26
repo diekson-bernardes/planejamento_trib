@@ -63,6 +63,7 @@ class RuleSet:
     elegibilidade: dict
     atividades: dict
     verified: dict       # domínio → bool
+    consumo: dict | None = None   # CBS/IBS (exercícios a partir de 2027); None = PIS/Cofins vigentes
 
     def in_force(self, competence: str) -> bool:
         y, m = int(competence[:4]), int(competence[5:7])
@@ -147,4 +148,18 @@ def load_rules(rules_dir: str | Path, exercise: str | int = "2026") -> RuleSet:
         elegibilidade=docs["elegibilidade"],
         atividades=docs["atividades"],
         verified={k: bool(v.get("verificado", False)) for k, v in docs.items()},
+        consumo=_consumo(docs.get("consumo")),
     )
+
+
+def _consumo(doc: dict | None) -> dict | None:
+    """consumo.json (2027+): CBS/IBS com alíquota por premissa e listas de CFOP."""
+    if doc is None:
+        return None
+    for key in ("tributos", "cfop_creditaveis", "cfop_compras_mercadorias", "cfop_devolucao_venda"):
+        if key not in doc:
+            raise RulesError(f"consumo.json sem '{key}'")
+    for tax, spec in doc["tributos"].items():
+        if "premissa_aliquota" not in spec:
+            raise RulesError(f"consumo.json: tributo {tax} sem premissa de alíquota")
+    return doc

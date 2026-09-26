@@ -14,6 +14,7 @@ EXPECTED = {
     "folha_202608": (DocType.FOLHA_ALTERDATA, "2026-08"),
     "dre_202608": (DocType.DRE_ALTERDATA, "2026-08"),
     "balancete_202608": (DocType.BALANCETE_ALTERDATA, "2026-08"),
+    "livro_202608": (DocType.LIVRO_ICMS_ALTERDATA, "2026-08"),
 }
 
 
