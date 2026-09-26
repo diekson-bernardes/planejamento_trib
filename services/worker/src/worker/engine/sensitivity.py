@@ -51,23 +51,28 @@ class SensitivityResult:
     legal_value: Decimal | None = None
     legal_change: dict = field(default_factory=dict)
     runs: int = 0
+    unit: str = "reais"             # reais | fracao (unidade de base_value/turning_value quando multiplicador)
 
     def as_dict(self) -> dict:
         def s(v, places="0.000001"):
             return None if v is None else str(v.quantize(Decimal(places)))
-        return {
+        money_like = self.kind == "multiplicador" and self.unit == "reais"
+        out = {
             "variavel": self.key, "rotulo": self.label, "tipo": self.kind,
-            "base_x": s(self.base_x), "base_valor": s(self.base_value, "0.01") if self.kind == "multiplicador" else s(self.base_value),
+            "base_x": s(self.base_x), "base_valor": s(self.base_value, "0.01") if money_like else s(self.base_value),
             "lider_base": self.leader,
             "virada_x": s(self.turning_x),
-            "virada_valor": (s(self.turning_value, "0.01") if self.kind == "multiplicador" else s(self.turning_value)),
+            "virada_valor": (s(self.turning_value, "0.01") if money_like else s(self.turning_value)),
             "novo_lider": self.new_leader, "distancia": s(self.distance, "0.0001"), "robustez": self.robustness,
             "limite_juridico_x": s(self.legal_x),
-            "limite_juridico_valor": (s(self.legal_value, "0.01") if self.kind == "multiplicador" else s(self.legal_value)),
+            "limite_juridico_valor": (s(self.legal_value, "0.01") if money_like else s(self.legal_value)),
             "limite_juridico": self.legal_change or None,
             "sem_virada": self.turning_x is None,
             "execucoes": self.runs,
         }
+        if self.unit != "reais":           # campo novo só quando difere (não altera o hash das projeções de 2026)
+            out["unidade"] = self.unit
+        return out
 
 
 def _levers(var: Variable, x: Decimal) -> Levers:
@@ -79,27 +84,34 @@ def _levers(var: Variable, x: Decimal) -> Levers:
 def _base_value(var: Variable, base: ProjectedCase) -> Decimal | None:
     if var.key in BASE_FIELD:
         return D(base.base[BASE_FIELD[var.key]])
-    taxes = {"creditos": None, "icms_iss": ("icms_regime_normal", "iss_regime_normal")}[var.key]
-    keys = ("pis_cofins_creditos_base",) if taxes is None else taxes
+    if var.key == "cbs":
+        return next((D(r["value"]) for r in base.assumptions if r["key"] == "reforma.cbs_aliquota" and r["value"] is not None), None)
+    if var.key == "creditos" and any(r["key"] == "reforma.creditos_base" for r in base.assumptions):
+        keys = ("reforma.creditos_base",)
+    else:
+        taxes = {"creditos": None, "icms_iss": ("icms_regime_normal", "iss_regime_normal")}[var.key]
+        keys = ("pis_cofins_creditos_base",) if taxes is None else taxes
     return sum((D(r["value"]) for r in base.assumptions if r["key"] in keys), ZERO)
 
 
 def run_sensitivity(view: SnapshotView, confirmed: Assumptions, rules: RuleSet, params: DecisionParams,
-                    base: ProjectedCase, base_ranking: list) -> list[SensitivityResult]:
+                    base: ProjectedCase, base_ranking: list, builder=None) -> list[SensitivityResult]:
+    """`builder(levers) -> ProjectedCase` monta a projeção do exercício (padrão: `build_projection` do ano base)."""
+    builder = builder or (lambda levers: build_projection(view, confirmed, params, levers))
     out = []
     for var in params.variables:
-        out.append(_one(var, view, confirmed, rules, params, base, base_ranking))
+        out.append(_one(var, builder, rules, params, base, base_ranking))
     return out
 
 
-def _one(var: Variable, view, confirmed, rules, params, base: ProjectedCase, base_ranking: list) -> SensitivityResult:
+def _one(var: Variable, builder, rules, params, base: ProjectedCase, base_ranking: list) -> SensitivityResult:
     cache: dict = {}
 
     def at(x: Decimal) -> Point | None:
         x = x.quantize(Decimal("0.000001"))
         if x not in cache:
             try:
-                pc = build_projection(view, confirmed, params, _levers(var, x))
+                pc = builder(_levers(var, x))
                 sim = calculate(SnapshotView(pc.content), Assumptions(pc.assumptions), rules)
                 cache[x] = Point(x, tuple(sim.ranking), {r: v.total for r, v in sim.regimes.items()})
             except ProjectionError:
@@ -108,7 +120,7 @@ def _one(var: Variable, view, confirmed, rules, params, base: ProjectedCase, bas
 
     base_x = D(base.base["margem_anual"]) if var.kind == "absoluto" else Decimal("1")
     result = SensitivityResult(var.key, var.label, var.kind, base_x, _base_value(var, base),
-                               base_ranking[0] if base_ranking else None)
+                               base_ranking[0] if base_ranking else None, unit=var.unit)
     if not base_ranking:
         return result
     # o ponto base é calculado pelo mesmo caminho dos demais pontos do eixo (ex.: margem aplicada a todos os meses),

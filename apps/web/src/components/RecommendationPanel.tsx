@@ -5,7 +5,7 @@ import {
   submitRecommendation,
 } from "@/app/(app)/cases/[id]/planning/projection/actions";
 import { StatusBadge } from "@/components/StatusBadge";
-import { EVENT_LABEL, formatBRL, formatDateTime, formatPct, REGIME_LABEL } from "@/lib/format";
+import { EVENT_LABEL, formatBRL, formatDateTime, formatPct, orderedRegimes, REGIME_LABEL } from "@/lib/format";
 
 export type ComputedRecommendation = {
   status: string;
@@ -56,7 +56,7 @@ export function RecommendationPanel({ caseId, projectionId, rec, computed, event
     </>
   );
   const canApprove = isTechnical && rec.elaborated_by !== userId;
-  const regimes = ["SIMPLES", "PRESUMIDO", "REAL"].filter((r) => computed.carga?.[r]);
+  const regimes = orderedRegimes(computed.carga);
 
   return (
     <section className="card space-y-4" aria-labelledby="rec-title">

@@ -1,6 +1,14 @@
 import { z } from "zod";
 
-export const DOC_TYPES = ["PGDAS_D", "FOLHA_ALTERDATA", "DRE_ALTERDATA", "BALANCETE_ALTERDATA"] as const;
+export const DOC_TYPES = [
+  "PGDAS_D",
+  "FOLHA_ALTERDATA",
+  "DRE_ALTERDATA",
+  "BALANCETE_ALTERDATA",
+  "LIVRO_ICMS_ALTERDATA",
+] as const;
+/** Documentos exigidos por competência; o Livro de Apuração do ICMS é opcional (conciliação R7). */
+export const REQUIRED_DOC_TYPES = DOC_TYPES.filter((t) => t !== "LIVRO_ICMS_ALTERDATA");
 export const MAPPING_TARGETS = [
   "vendas",
   "simples_despesa",
@@ -8,6 +16,7 @@ export const MAPPING_TARGETS = [
   "inss_a_pagar",
   "fgts_a_pagar",
   "salarios_a_pagar",
+  "compras_mercadorias",
 ] as const;
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
@@ -128,6 +137,16 @@ export const technicalResponsibleSchema = z
   });
 
 /** Limiar de "resultado inconclusivo": fração do custo do regime vencedor, entre 0 e 1 (exclusive). */
+/** Exercícios com regras parametrizadas no worker (2027: Reforma — CBS/IBS). */
+export const PROJECTION_YEARS = [2026, 2027] as const;
+
+export const projectionYearSchema = z.object({
+  year: z.coerce
+    .number()
+    .int()
+    .refine((y) => (PROJECTION_YEARS as readonly number[]).includes(y), "Exercício sem regras parametrizadas"),
+});
+
 export const thresholdSchema = z.object({
   threshold: z.number().gt(0, "O limiar deve ser maior que 0").lt(1, "O limiar deve ser menor que 1 (100%)"),
 });

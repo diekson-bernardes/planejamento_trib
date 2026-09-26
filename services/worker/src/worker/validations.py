@@ -34,8 +34,26 @@ def validate(result: ParseResult, monthly: bool = True) -> list[ValidationResult
         DocType.FOLHA_ALTERDATA: _folha,
         DocType.DRE_ALTERDATA: _dre,
         DocType.BALANCETE_ALTERDATA: _balancete,
+        DocType.LIVRO_ICMS_ALTERDATA: _livro_icms,
     }[result.doc_type]
     return out + fn(result.values)
+
+
+def _livro_icms(values: list[ExtractedValue]) -> list[ValidationResult]:
+    """Por seção (entradas/saídas) e coluna: soma dos CFOPs = totais e soma dos subtotais por origem = totais."""
+    out: list[ValidationResult] = []
+    for section in ("entradas", "saidas"):
+        cols = sorted({v.column for v in values if v.section == section and v.field_key == "total"})
+        for col in cols:
+            total = _get(values, "total", section=section, column=col)
+            cfops = [v.value for v in values if v.section == section and v.column == col and v.field_key.startswith("cfop.")]
+            subs = [v.value for v in values if v.section == section and v.column == col and v.field_key.startswith("subtotal.")]
+            out.append(check(f"livro.soma_cfop_igual_total[{section}.{col}]", total, sum(cfops, ZERO)))
+            if subs:
+                out.append(check(f"livro.soma_subtotais_igual_total[{section}.{col}]", total, sum(subs, ZERO)))
+    if not out:
+        out.append(ValidationResult(rule="livro.totais_presentes", status="fail", detail="Totais de entradas/saídas ausentes"))
+    return out
 
 
 def _pgdas(values: list[ExtractedValue]) -> list[ValidationResult]:

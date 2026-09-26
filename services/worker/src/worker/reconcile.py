@@ -1,4 +1,4 @@
-"""Conciliação entre fontes por competência (regras R1–R6). Funções puras.
+"""Conciliação entre fontes por competência (regras R1–R7). Funções puras.
 
 Cada regra compara um valor de referência (lado A) com uma ou mais fontes contábeis (lado B).
 A regra fica `divergent` se qualquer fonte B disponível diferir de A além da tolerância e
@@ -9,7 +9,10 @@ from decimal import Decimal
 
 from worker.models import DocType, ReconciliationResult
 
-TARGETS = ("vendas", "simples_despesa", "simples_a_recolher", "inss_a_pagar", "fgts_a_pagar", "salarios_a_pagar")
+TARGETS = ("vendas", "simples_despesa", "simples_a_recolher", "inss_a_pagar", "fgts_a_pagar", "salarios_a_pagar",
+           "compras_mercadorias")
+# Compras para comercialização no Livro de Apuração (mesma lista de rules/2027/consumo.json: cfop_compras_mercadorias)
+COMPRAS_CFOP = ("1102", "2102", "1403", "2403")
 
 
 @dataclass(frozen=True)
@@ -128,4 +131,14 @@ def reconcile(facts: Facts, mappings: dict[tuple[str, str], str], tolerance: Dec
                          facts.value(DocType.PGDAS_D, prev, "tributo.total", "total", "2.8.total_declarado"), [
             ("Balancete: saldo anterior de Simples a Recolher", saldo),
         ], tolerance))
+        # R7 só quando há Livro de Apuração na competência (documento opcional)
+        livro = [facts.value(DocType.LIVRO_ICMS_ALTERDATA, comp, "cfop." + c, "valor_contabil", "entradas")
+                 for c in COMPRAS_CFOP]
+        if facts.get(DocType.LIVRO_ICMS_ALTERDATA, comp, "total", "valor_contabil", "entradas") is not None:
+            compras = sum((v for v in livro if v is not None), Decimal("0"))
+            out.append(_rule(comp, "R7", "Compras para comercialização", "Livro de Apuração: CFOP 1102/2102/1403/2403",
+                             compras, [
+                ("Balancete: débito em Compras de Mercadorias",
+                 _balancete_movement(facts, comp, code("compras_mercadorias", bal), "debito")),
+            ], tolerance))
     return out

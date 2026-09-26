@@ -1,5 +1,5 @@
 import { StatusBadge } from "@/components/StatusBadge";
-import { ELIGIBILITY, formatBRL, formatCompetence, REGIME_LABEL, TAX_LABEL } from "@/lib/format";
+import { ELIGIBILITY, formatBRL, formatCompetence, orderedRegimes, REGIME_LABEL, TAX_LABEL } from "@/lib/format";
 
 type RegimeResult = {
   status: string;
@@ -21,20 +21,19 @@ export type SimulationResultView = {
   eligibility: Record<string, Eligibility>;
 };
 
-const REGIMES = ["SIMPLES", "PRESUMIDO", "REAL"];
-
 function periodLabel(p: string) {
   return p.includes("-T") ? `${p.slice(5)}/${p.slice(0, 4)}` : formatCompetence(p);
 }
 
 export function ComparisonTable({ result }: { result: SimulationResultView }) {
+  const REGIMES = orderedRegimes(result.regimes);
   const taxes = Array.from(new Set(REGIMES.flatMap((r) => Object.keys(result.regimes[r]?.by_tax ?? {})))).sort();
   const periods = Array.from(new Set(REGIMES.flatMap((r) => Object.keys(result.regimes[r]?.by_period ?? {})))).sort();
   const ranked = new Map(result.ranking.map((r, i) => [r, i + 1]));
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className={`grid gap-3 ${REGIMES.length > 3 ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3"}`}>
         {REGIMES.map((regime) => {
           const r = result.regimes[regime];
           const e = result.eligibility[regime];

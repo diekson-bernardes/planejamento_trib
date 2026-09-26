@@ -1,0 +1,34 @@
+{
+  "domain": "consumo",
+  "descricao": "CBS e IBS de 2027 (substituem PIS/Cofins; IPI zero). Alíquotas por premissa do escritório.",
+  "fonte": "LC 214/2025, art. 12, § 2º (ICMS/ISS fora da base) e disposições de transição, via fontes secundárias; LC 214/2025 (Reforma Tributária) e LC 123/2006 alterada, lidas via fontes secundárias em 2026-09-25; texto oficial não conferido",
+  "verificado": false,
+  "tributos": {
+    "cbs": {
+      "premissa_aliquota": "reforma.cbs_aliquota"
+    },
+    "ibs": {
+      "premissa_aliquota": "reforma.ibs_aliquota"
+    }
+  },
+  "base": "receita bruta menos devoluções de venda; ICMS e ISS não integram a base",
+  "credito": "financeiro: base de créditos do mês (compras creditáveis) × alíquota; saldo credor transportado",
+  "ipi": "zero em 2027 (exceção da Zona Franca de Manaus fora do escopo)",
+  "cfop_creditaveis": [
+    "1102",
+    "2102",
+    "1403",
+    "2403",
+    "2353"
+  ],
+  "cfop_compras_mercadorias": [
+    "1102",
+    "2102",
+    "1403",
+    "2403"
+  ],
+  "cfop_devolucao_venda": [
+    "1202",
+    "1411"
+  ]
+}

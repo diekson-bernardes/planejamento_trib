@@ -1,0 +1,105 @@
+{
+  "dominio": "decisao",
+  "versao": "2027.1.0",
+  "exercicio": 2027,
+  "descricao": "Política de decisão do exercício 2027 (Reforma Tributária): variáveis do ciclo 3 + alíquota da CBS; ressalvas da Reforma",
+  "limiar_padrao": "0.05",
+  "robustez": {
+    "robusta_acima": "0.20",
+    "fragil_abaixo": "0.05",
+    "fonte": "kb/planejamento-comparativo/patterns/encontrar-ponto-de-virada.md (faixas sugeridas)"
+  },
+  "projecao": {
+    "metodo_meses_futuros": "media_simples",
+    "campos_proporcionais_a_receita": [
+      "icms_regime_normal",
+      "iss_regime_normal",
+      "pis_cofins_creditos_base",
+      "pis_cofins_exclusoes",
+      "outras_receitas",
+      "real.adicoes",
+      "real.exclusoes"
+    ]
+  },
+  "sensibilidade": {
+    "busca": {
+      "pontos_grade": 11,
+      "iteracoes_bissecao": 12,
+      "precisao_relativa": "0.001"
+    },
+    "variaveis": [
+      {
+        "chave": "receita",
+        "rotulo": "Receita anual",
+        "tipo": "multiplicador",
+        "de": "0.50",
+        "ate": "1.50"
+      },
+      {
+        "chave": "margem",
+        "rotulo": "Margem antes de IRPJ/CSLL",
+        "tipo": "absoluto",
+        "de": "0.00",
+        "ate": "0.40"
+      },
+      {
+        "chave": "folha",
+        "rotulo": "Folha / receita",
+        "tipo": "multiplicador",
+        "de": "0.50",
+        "ate": "2.00"
+      },
+      {
+        "chave": "creditos",
+        "rotulo": "Créditos de PIS/Cofins",
+        "tipo": "multiplicador",
+        "de": "0.00",
+        "ate": "2.00"
+      },
+      {
+        "chave": "icms_iss",
+        "rotulo": "ICMS/ISS no regime normal",
+        "tipo": "multiplicador",
+        "de": "0.00",
+        "ate": "2.00"
+      },
+      {
+        "chave": "cbs",
+        "rotulo": "Alíquota da CBS",
+        "tipo": "multiplicador",
+        "de": "0.50",
+        "ate": "1.50",
+        "unidade": "fracao"
+      }
+    ]
+  },
+  "carga": {
+    "consumo": [
+      "pis",
+      "cofins",
+      "icms",
+      "iss",
+      "ipi",
+      "cbs",
+      "ibs"
+    ],
+    "renda": [
+      "irpj",
+      "adicional_irpj",
+      "csll"
+    ],
+    "folha": [
+      "cpp",
+      "rat",
+      "terceiros"
+    ]
+  },
+  "ressalvas": [
+    "Comparação do exercício de 2027 projetada a partir da projeção de 2026 com o crescimento informado. Em 2027 PIS e Cofins são substituídos pela CBS (crédito financeiro sobre as compras); ICMS e ISS seguem integrais até 2028.",
+    "As alíquotas de CBS e IBS de 2027 foram informadas pelo escritório; a alíquota de referência depende de resolução do Senado.",
+    "Regras de 2027 lidas em fontes secundárias da LC 214/2025, ainda não conferidas no texto oficial. A repartição do DAS de 2027 (parcelas de PIS/Cofins convertidas em CBS; IBS sem parcela no DAS) é hipótese.",
+    "O mix de vendas (consumidor final × empresas que aproveitam crédito) não foi considerado: o efeito do Simples por dentro sobre o crédito do cliente B2B não está no comparativo.",
+    "O custo de conformidade é exibido separadamente e não altera a ordem dos regimes.",
+    "Recomendação sujeita à revisão e aprovação do responsável técnico; não substitui a análise jurídica de elegibilidade."
+  ]
+}

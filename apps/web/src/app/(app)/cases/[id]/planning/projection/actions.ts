@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { firstIssue, returnRecommendationSchema } from "@/lib/schemas";
+import { firstIssue, projectionYearSchema, returnRecommendationSchema } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 
 function to(path: string, kind: "erro" | "ok", message: string): never {
@@ -17,14 +17,18 @@ function fields(formData: FormData) {
   return { caseId, recommendationId, page: `/cases/${caseId}/planning/projection/${projectionId}` };
 }
 
-/** Pede a Projeção 2026 (worker: projeção → motor → sensibilidade → recomendação em rascunho). */
+/** Pede a projeção do exercício (worker: projeção → motor → sensibilidade → recomendação em rascunho).
+ *  2027 = projeção de 2026 deslocada com o crescimento informado, sob as regras da Reforma. */
 export async function requestProjection(formData: FormData) {
   const caseId = String(formData.get("caseId") ?? "");
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("request_projection", { p_case_id: caseId });
   const back = `/cases/${caseId}/planning`;
+  const parsed = projectionYearSchema.safeParse({ year: formData.get("year") ?? 2026 });
+  if (!parsed.success) to(back, "erro", firstIssue(parsed.error));
+  const year = parsed.data.year;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("request_projection", { p_case_id: caseId, p_year: year });
   if (error) to(back, "erro", error.message);
-  to(back, "ok", "Projeção solicitada. Ela aparece na lista de projeções em instantes.");
+  to(back, "ok", `Projeção ${year} solicitada. Ela aparece na lista de projeções em instantes.`);
 }
 
 export async function submitRecommendation(formData: FormData) {

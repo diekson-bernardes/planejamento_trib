@@ -16,6 +16,7 @@ class Variable:
     kind: str            # multiplicador | absoluto
     low: Decimal
     high: Decimal
+    unit: str = "reais"      # reais | fracao — unidade do valor base quando o tipo é multiplicador
 
 
 @dataclass(frozen=True)
@@ -54,7 +55,8 @@ def load_decision_params(path: str | Path) -> DecisionParams:
     except json.JSONDecodeError as exc:
         raise RulesError(f"JSON inválido em {path}: {exc}") from exc
     sens = doc["sensibilidade"]
-    variables = tuple(Variable(v["chave"], v["rotulo"], v["tipo"], D(v["de"]), D(v["ate"])) for v in sens["variaveis"])
+    variables = tuple(Variable(v["chave"], v["rotulo"], v["tipo"], D(v["de"]), D(v["ate"]), v.get("unidade", "reais"))
+                      for v in sens["variaveis"])
     for v in variables:
         if v.kind not in ("multiplicador", "absoluto") or v.low >= v.high:
             raise RulesError(f"variável de sensibilidade inválida: {v.key}")

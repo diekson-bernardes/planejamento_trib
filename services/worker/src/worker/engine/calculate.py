@@ -5,7 +5,7 @@ from decimal import Decimal
 from worker.engine import presumido, real, simples
 from worker.engine.assumptions import Assumptions
 from worker.engine.eligibility import evaluate
-from worker.engine.memory import REGIMES, ZERO, Line, canonical_hash, line_dict, money
+from worker.engine.memory import HIBRIDO, ZERO, Line, canonical_hash, line_dict, money, regimes_for
 from worker.engine.rules import MissingRule, RuleSet
 from worker.engine.snapshot import SnapshotView
 
@@ -64,15 +64,17 @@ class SimulationResult:
 
 ENGINES = {
     "SIMPLES": lambda comps, view, a, rules: _simples(comps, view, a, rules),
+    HIBRIDO: lambda comps, view, a, rules: _simples(comps, view, a, rules, hybrid=True),
     "PRESUMIDO": presumido.calculate,
     "REAL": real.calculate,
 }
 
 
-def _simples(comps, view, a, rules):
+def _simples(comps, view, a, rules, hybrid: bool = False):
     lines, alerts = [], []
+    saldo: dict = {}
     for comp in comps:
-        month_lines, month_alerts = simples.calculate_month(comp, view, a, rules)
+        month_lines, month_alerts = simples.calculate_month(comp, view, a, rules, hybrid, saldo)
         lines += month_lines
         alerts += month_alerts
     return lines, alerts
@@ -83,12 +85,15 @@ def calculate(view: SnapshotView, a: Assumptions, rules: RuleSet) -> SimulationR
     if not comps:
         raise NoCompleteCompetence("nenhuma competência com PGDAS-D, folha, DRE e balancete homologados")
     eligibility = evaluate(view, comps, a, rules)
+    if HIBRIDO in regimes_for(rules):   # a opção híbrida não muda quem pode estar no Simples
+        eligibility[HIBRIDO] = eligibility["SIMPLES"]
     out_of_force = [c for c in comps if not rules.in_force(c)]
 
     all_lines: list[Line] = []
     regimes: dict = {}
     alerts: list = []
-    for regime in REGIMES:
+    regimes_list = regimes_for(rules)
+    for regime in regimes_list:
         rr = RegimeResult(regime)
         regimes[regime] = rr
         if out_of_force:
@@ -118,8 +123,8 @@ def calculate(view: SnapshotView, a: Assumptions, rules: RuleSet) -> SimulationR
         all_lines += produced
 
     ranking = sorted(
-        (r for r in REGIMES if regimes[r].status == CALCULADO and eligibility[r].rankable),
-        key=lambda r: (regimes[r].total, REGIMES.index(r)),
+        (r for r in regimes_list if regimes[r].status == CALCULADO and eligibility[r].rankable),
+        key=lambda r: (regimes[r].total, regimes_list.index(r)),
     )
     result = SimulationResult(
         competences=comps, excluded=view.excluded_competences(), eligibility=eligibility, regimes=regimes,

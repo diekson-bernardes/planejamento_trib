@@ -1,0 +1,223 @@
+{
+  "descricao": "Caso dourado da decisão de 2027 (Reforma): projeção de 2026 da amostra comercial (12 documentos de 06–08/2026 + Livro de Apuração do ICMS 08/2026) deslocada com crescimento de 5%, CBS 9,5%, IBS 0,1%, premissas sugeridas aceitas, declarações de elegibilidade = 'nao' e limiar de 5%",
+  "approved_by": "Diekson Bernardes (responsável de negócio)",
+  "approved_at": "2026-09-26",
+  "approval_note": "Aprovado no SDD Build do ciclo 4 após apresentação dos totais das 4 alternativas, da recomendação (Simples 24,60% abaixo do híbrido) e dos pontos de virada; regras 2027 com verificado=false (LC 214 via fontes secundárias)",
+  "sample_set": "completo_06_08",
+  "rules_version": "2027.1.0",
+  "decision_version": "2027.1.0",
+  "threshold": "0.05",
+  "assumption_overrides": {
+    "eleg.socio_pj": "nao",
+    "eleg.participacao_receita_global": "nao",
+    "eleg.atividade_vedada": "nao",
+    "eleg.debitos_sem_suspensao": "nao",
+    "eleg.obrigatoriedade_real": "nao"
+  },
+  "reform_values": {
+    "reforma.cbs_aliquota": "0.095",
+    "reforma.ibs_aliquota": "0.001",
+    "reforma.crescimento": "0.05"
+  },
+  "ano_base": 2026,
+  "receita_anual": "3676366.71",
+  "razao_creditos": "0.477742",
+  "ranking": [
+    "SIMPLES",
+    "SIMPLES_HIBRIDO",
+    "PRESUMIDO",
+    "REAL"
+  ],
+  "regimes": {
+    "SIMPLES": {
+      "total": "378692.23",
+      "by_tax": {
+        "cbs": "83603.34",
+        "cpp": "163390.71",
+        "csll": "21636.00",
+        "ibs": "0.00",
+        "icms": "78798.35",
+        "irpj": "31263.83"
+      },
+      "by_period": {
+        "2027-01": "38650.76",
+        "2027-02": "22917.10",
+        "2027-03": "31170.69",
+        "2027-04": "29507.77",
+        "2027-05": "31399.23",
+        "2027-06": "34278.09",
+        "2027-07": "36040.59",
+        "2027-08": "23065.34",
+        "2027-09": "32716.67",
+        "2027-10": "32850.06",
+        "2027-11": "32982.33",
+        "2027-12": "33113.60"
+      }
+    },
+    "PRESUMIDO": {
+      "total": "475153.57",
+      "by_tax": {
+        "adicional_irpj": "6446.53",
+        "cbs": "174807.06",
+        "cpp": "90514.20",
+        "csll": "40636.80",
+        "ibs": "1840.07",
+        "icms": "79938.57",
+        "irpj": "45669.77",
+        "iss": "0.00",
+        "rat": "9051.42",
+        "terceiros": "26249.15"
+      },
+      "by_period": {
+        "2027-01": "37501.24",
+        "2027-02": "26485.79",
+        "2027-03": "32234.51",
+        "2027-04": "31056.19",
+        "2027-05": "32356.89",
+        "2027-06": "35253.98",
+        "2027-07": "35172.93",
+        "2027-08": "25044.14",
+        "2027-09": "31823.70",
+        "2027-10": "31823.70",
+        "2027-11": "31823.70",
+        "2027-12": "31823.70",
+        "2027-T1": "23471.04",
+        "2027-T2": "24584.16",
+        "2027-T3": "21568.35",
+        "2027-T4": "23129.55"
+      }
+    },
+    "REAL": {
+      "total": "1260440.27",
+      "by_tax": {
+        "adicional_irpj": "241305.82",
+        "cbs": "174807.06",
+        "cpp": "90514.20",
+        "csll": "238775.24",
+        "ibs": "1840.07",
+        "icms": "79938.57",
+        "irpj": "397958.74",
+        "iss": "0.00",
+        "rat": "9051.42",
+        "terceiros": "26249.15"
+      },
+      "by_period": {
+        "2027-01": "37501.24",
+        "2027-02": "26485.79",
+        "2027-03": "32234.51",
+        "2027-04": "31056.19",
+        "2027-05": "32356.89",
+        "2027-06": "35253.98",
+        "2027-07": "35172.93",
+        "2027-08": "25044.14",
+        "2027-09": "31823.70",
+        "2027-10": "31823.70",
+        "2027-11": "31823.70",
+        "2027-12": "31823.70",
+        "2027-T1": "221802.04",
+        "2027-T2": "223784.14",
+        "2027-T3": "213426.41",
+        "2027-T4": "219027.21"
+      }
+    },
+    "SIMPLES_HIBRIDO": {
+      "total": "471845.47",
+      "by_tax": {
+        "cbs": "174915.36",
+        "cpp": "163390.71",
+        "csll": "21636.00",
+        "ibs": "1841.22",
+        "icms": "78798.35",
+        "irpj": "31263.83"
+      },
+      "by_period": {
+        "2027-01": "50181.74",
+        "2027-02": "29741.42",
+        "2027-03": "40442.64",
+        "2027-04": "38272.15",
+        "2027-05": "40712.53",
+        "2027-06": "44257.28",
+        "2027-07": "46989.78",
+        "2027-08": "27037.77",
+        "2027-09": "38420.02",
+        "2027-10": "38508.85",
+        "2027-11": "38596.93",
+        "2027-12": "38684.36"
+      }
+    }
+  },
+  "recomendacao": {
+    "status": "recomendado",
+    "regime": "SIMPLES",
+    "segundo": "SIMPLES_HIBRIDO",
+    "economia_vs_segundo": "93153.24",
+    "economia_vs_segundo_pct": "0.2460",
+    "economia_vs_atual": "0.00"
+  },
+  "carga": {
+    "SIMPLES": {
+      "consumo": "162401.69",
+      "renda": "52899.83",
+      "folha": "163390.71"
+    },
+    "PRESUMIDO": {
+      "consumo": "256585.70",
+      "renda": "92753.10",
+      "folha": "125814.77"
+    },
+    "REAL": {
+      "consumo": "256585.70",
+      "renda": "878039.80",
+      "folha": "125814.77"
+    },
+    "SIMPLES_HIBRIDO": {
+      "consumo": "255554.93",
+      "renda": "52899.83",
+      "folha": "163390.71"
+    }
+  },
+  "sensibilidade": {
+    "receita": {
+      "virada_x": "1.208984",
+      "virada_valor": "4444670.37",
+      "novo_lider": "PRESUMIDO",
+      "robustez": "robusta",
+      "limite_juridico_x": "1.310547"
+    },
+    "margem": {
+      "virada_x": null,
+      "virada_valor": null,
+      "novo_lider": null,
+      "robustez": null,
+      "limite_juridico_x": null
+    },
+    "folha": {
+      "virada_x": null,
+      "virada_valor": null,
+      "novo_lider": null,
+      "robustez": null,
+      "limite_juridico_x": null
+    },
+    "creditos": {
+      "virada_x": "1.552344",
+      "virada_valor": "2726464.78",
+      "novo_lider": "SIMPLES_HIBRIDO",
+      "robustez": "robusta",
+      "limite_juridico_x": null
+    },
+    "icms_iss": {
+      "virada_x": null,
+      "virada_valor": null,
+      "novo_lider": null,
+      "robustez": null,
+      "limite_juridico_x": null
+    },
+    "cbs": {
+      "virada_x": null,
+      "virada_valor": null,
+      "novo_lider": null,
+      "robustez": null,
+      "limite_juridico_x": null
+    }
+  }
+}

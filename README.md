@@ -64,6 +64,24 @@ A política de decisão (intervalos, robustez, limiar padrão, grupos de carga, 
 `services/worker/rules/decisao.json`, com versão e hash próprios gravados em cada projeção — separada das regras
 tributárias. Golden: `services/worker/tests/golden/decisao_2026.json` (aprovado pelo responsável de negócio).
 
+## Reforma Tributária 2027 (ciclo 4)
+
+- **Regras por exercício**: `services/worker/rules/2027/` (versão `2027.1.0`, `verificado: false`) com CBS/IBS no lugar
+  de PIS/Cofins (crédito financeiro sobre a base de créditos, saldo credor transportado), IPI zero e a base sem
+  ICMS/ISS; as regras de 2026 e seus goldens não mudam.
+- **Quatro alternativas** em 2027: Simples (CBS/IBS por dentro do DAS), **Simples híbrido** (CBS/IBS fora do DAS, pelo
+  regime regular), Presumido e Real.
+- **Premissas do grupo `reforma_2027`**: alíquotas de CBS e IBS (sem padrão — informadas pelo escritório), crescimento
+  sobre 2026 e base de créditos por competência (sugerida pelos CFOPs creditáveis do Livro de Apuração ou pelas contas
+  do balancete). Pendentes, **só bloqueiam a projeção de 2027** — cálculo e projeção de 2026 seguem liberados.
+- **Projetar 2027** (`request_projection(case, 2027)`): a projeção de 2026 deslocada com o crescimento, sensibilidade com
+  a variável "alíquota da CBS" (`rules/decisao_2027.json`) e o mesmo fluxo de aprovação e PDF.
+- **Livro de Apuração do ICMS (Alterdata)**: documento opcional antes da homologação; entradas/saídas por CFOP conferidas
+  com os totais e conciliação **R7** (compras CFOP 1102/2102/1403/2403 × débito da conta 13101 do balancete, alvo
+  `compras_mercadorias` no mapeamento do escritório).
+- Fora deste ciclo: mix de vendas (B2B × consumidor final), transição 2029–2033, Imposto Seletivo, ZFM, alíquotas por
+  NCM, split payment e a opção semestral do híbrido.
+
 ## Pré-requisitos
 
 - Node.js 20+ e npm

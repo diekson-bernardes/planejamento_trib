@@ -1,0 +1,18 @@
+{
+  "version": "2027.1.0",
+  "exercicio": 2027,
+  "vigencia": [
+    "2027-01-01",
+    "2027-12-31"
+  ],
+  "arquivos": [
+    "simples.json",
+    "presumido.json",
+    "real.json",
+    "encargos.json",
+    "elegibilidade.json",
+    "atividades.json",
+    "consumo.json"
+  ],
+  "observacao": "Valores monetários e alíquotas sempre como string decimal. 'verificado': true somente quando conferido na fonte primária. Exercício 2027: Reforma Tributária (CBS/IBS no lugar de PIS/Cofins); cópia das regras de 2026 com os ajustes descritos em cada arquivo."
+}

@@ -36,6 +36,17 @@ O PRD pede: "Para optantes do Simples, o sistema deve comportar as alternativas 
 - **Empresa com muitas compras tributadas:** o híbrido permite recuperar créditos, o que pode compensar a alíquota maior.
 - **Motor:** a simulação do Simples a partir de 2027 precisa de dois sub-cenários (por dentro × híbrido) e do perfil de clientes (percentual B2B que aproveita crédito).
 
+## Como o sistema calcula 2027 (hipóteses em aberto)
+
+| Ponto | Tratamento nas regras `2027.1.0` | Situação |
+|---|---|---|
+| Repartição do DAS em 2027 (A-401) | Mesma alíquota efetiva do anexo de 2026; as parcelas de PIS + Cofins passam a ser de CBS e o IBS fica sem parcela no DAS | Hipótese — fontes secundárias não trazem a tabela de 2027 |
+| Híbrido | O DAS perde as parcelas de CBS/IBS; CBS/IBS apurados como no regime regular (débito − crédito financeiro, saldo credor transportado) | Hipótese — opção tratada como anual (a semestral fica para outro ciclo) |
+| Base de CBS/IBS | Receita − monofásica/isenta − ICMS/ISS do regime no mês − exclusões informadas | LC 214/2025, art. 12, § 2º (ICMS/ISS fora da base), segundo as fontes; o sistema usa o ICMS/ISS calculado pelo regime (líquido), não o destacado nas notas |
+| Alíquotas de 2027 | Premissa do escritório, sem padrão (a de referência depende de resolução do Senado) | Sem valor, a projeção de 2027 sai bloqueada |
+
+**Fonte:** LC 214/2025 lida via fontes secundárias (as mesmas do topo desta nota) em 2026-09-25; **texto oficial não conferido** — todas as regras de 2027 têm `verificado: false` até a revisão contábil.
+
 ## Relacionados
 
 - [calendario-transicao.md](calendario-transicao.md)

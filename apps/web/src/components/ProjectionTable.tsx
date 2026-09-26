@@ -3,7 +3,7 @@ import { formatBRL, MONTH_ORIGIN, REGIME_LABEL, TAX_LABEL } from "@/lib/format";
 export type ProjectionLine = { regime: string; period: string; tax: string; kind: string; amount: string | number };
 
 const MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
-const TAX_ORDER = ["irpj", "adicional_irpj", "csll", "cofins", "pis", "cpp", "rat", "terceiros", "icms", "iss", "ipi"];
+const TAX_ORDER = ["irpj", "adicional_irpj", "csll", "cofins", "pis", "cbs", "ibs", "cpp", "rat", "terceiros", "icms", "iss", "ipi"];
 
 /** Resultado mensal por regime no formato do SPTE: tributos × jan–dez (+ trimestres do IRPJ/CSLL) e origem do mês. */
 export function ProjectionTable({ regime, year, lines, origins }: {
@@ -13,7 +13,7 @@ export function ProjectionTable({ regime, year, lines, origins }: {
   origins: Record<string, string>;
 }) {
   const months = MONTHS.map((_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
-  const quarters = regime === "SIMPLES" ? [] : [1, 2, 3, 4].map((q) => `${year}-T${q}`);
+  const quarters = regime.startsWith("SIMPLES") ? [] : [1, 2, 3, 4].map((q) => `${year}-T${q}`);
   const periods = [...months, ...quarters];
   const grid = new Map<string, Map<string, number>>();
   for (const l of lines) {

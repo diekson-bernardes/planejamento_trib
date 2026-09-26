@@ -27,6 +27,7 @@ export const DOC_TYPE_LABEL: Record<string, string> = {
   FOLHA_ALTERDATA: "Folha (Alterdata)",
   DRE_ALTERDATA: "DRE (Alterdata)",
   BALANCETE_ALTERDATA: "Balancete (Alterdata)",
+  LIVRO_ICMS_ALTERDATA: "Livro de Apuração do ICMS (Alterdata)",
 };
 
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger";
@@ -71,6 +72,7 @@ export const RULE_LABEL: Record<string, string> = {
   R4: "FGTS",
   R5: "Proventos",
   R6: "DAS anterior",
+  R7: "Compras",
 };
 
 /** Meses (AAAA-MM) entre duas datas inclusive. */
@@ -89,10 +91,20 @@ export function monthsBetween(start: string, end: string): string[] {
   return out;
 }
 
+/** Ordem de exibição das alternativas; o Simples híbrido só existe a partir de 2027. */
+export const REGIME_ORDER = ["SIMPLES", "SIMPLES_HIBRIDO", "PRESUMIDO", "REAL"];
+
+/** Regimes presentes (chaves de um resultado ou lista de nomes), na ordem de exibição. */
+export function orderedRegimes(present: Record<string, unknown> | string[] | null | undefined): string[] {
+  const keys = Array.isArray(present) ? present : Object.keys(present ?? {});
+  return REGIME_ORDER.filter((r) => keys.includes(r));
+}
+
 export const REGIME_LABEL: Record<string, string> = {
   SIMPLES: "Simples Nacional",
   PRESUMIDO: "Lucro Presumido",
   REAL: "Lucro Real",
+  SIMPLES_HIBRIDO: "Simples híbrido (CBS/IBS por fora)",
 };
 
 export const TAX_LABEL: Record<string, string> = {
@@ -101,6 +113,8 @@ export const TAX_LABEL: Record<string, string> = {
   csll: "CSLL",
   pis: "PIS",
   cofins: "Cofins",
+  cbs: "CBS",
+  ibs: "IBS",
   cpp: "CPP",
   rat: "RAT",
   terceiros: "Terceiros",
@@ -126,6 +140,7 @@ export const ASSUMPTION_GROUP_LABEL: Record<string, string> = {
   elegibilidade: "Elegibilidade",
   projecao: "Projeção do exercício (orçamento opcional)",
   conformidade: "Custo de conformidade (exibido à parte)",
+  reforma_2027: "Reforma Tributária 2027 (só bloqueia a projeção de 2027)",
 };
 
 export const MONTH_ORIGIN: Record<string, { label: string; short: string }> = {

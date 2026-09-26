@@ -45,7 +45,8 @@ def _dec(value: Decimal) -> str:
     return str(money(value))
 
 
-def suggest(view: SnapshotView, rules: RuleSet, confirmed: "Assumptions | None" = None) -> list[Suggestion]:
+def suggest(view: SnapshotView, rules: RuleSet, confirmed: "Assumptions | None" = None,
+            reform: RuleSet | None = None) -> list[Suggestion]:
     """Sugestões do caso. `confirmed` (premissas já confirmadas) mantém as dependentes de perfis alterados
     pelo usuário — ex.: a folha do Fator R quando uma atividade passou a ser sujeita a ele."""
     comps = view.complete_competences()
@@ -162,6 +163,49 @@ def suggest(view: SnapshotView, rules: RuleSet, confirmed: "Assumptions | None" 
             out.append(Suggestion(dec["chave"], CASE, "elegibilidade", dec["pergunta"], "choice",
                                   "nao_informado", {"source": "padrao"}, choices=DECLARATION_CHOICES))
     out += _projection_suggestions(view, comps)
+    if reform is not None:
+        out += _reform_suggestions(view, comps, rules, reform)
+    return out
+
+
+REFORM_GROUP = "reforma_2027"
+
+
+def _reform_suggestions(view: SnapshotView, comps: list[str], rules: RuleSet, reform: RuleSet) -> list[Suggestion]:
+    """Premissas do exercício da Reforma (grupo próprio: pendências só bloqueiam a projeção desse exercício)."""
+    year = reform.exercise
+    consumo = reform.consumo or {}
+    out = []
+    for tax in ("cbs", "ibs"):
+        key = consumo["tributos"][tax]["premissa_aliquota"]
+        out.append(Suggestion(key, CASE, REFORM_GROUP, f"Alíquota de {tax.upper()} em {year} (fração: 0,095 = 9,5%)",
+                              "ratio", None, {"source": "escritorio", "note": "sem valor padrão: informar a alíquota do exercício"}))
+    out.append(Suggestion("reforma.crescimento", CASE, REFORM_GROUP,
+                          f"Crescimento da receita de {year} sobre a projeção do ano anterior (fração)",
+                          "ratio", "0.0000", {"source": "padrao", "note": "0 = repete a projeção do ano anterior"}))
+    credit_labels = [s.lower() for s in rules.real["sugestao_creditos"]["rotulos"]]
+    creditaveis = set(consumo.get("cfop_creditaveis", []))
+    for comp in comps:
+        livro = [v for v in view.values("LIVRO_ICMS_ALTERDATA", comp)
+                 if v["section"] == "entradas" and v.get("column") == "valor_contabil"
+                 and v["field_key"].removeprefix("cfop.") in creditaveis]
+        if livro:
+            value = sum((D(v["value"]) for v in livro), ZERO)
+            origin = {"source": "snapshot", "note": "entradas creditáveis do Livro de Apuração do ICMS (CFOP)",
+                      "cfops": sorted(v["field_key"].removeprefix("cfop.") for v in livro), "doc_type": "LIVRO_ICMS_ALTERDATA"}
+        else:
+            contas = [v for v in view.balancete_accounts(comp)
+                      if v["section"].startswith("analitica") and v.get("column") == rules.real["sugestao_creditos"]["coluna"]
+                      and any(lbl in (v.get("label") or "").lower() for lbl in credit_labels)]
+            value = sum((D(v["value"]) for v in contas), ZERO)
+            origin = {"source": "snapshot", "note": "sem Livro de Apuração: débitos das contas de mercadorias do balancete",
+                      "accounts": [v["account_code"] for v in contas]}
+        out.append(Suggestion("reforma.creditos_base", comp_scope(comp), REFORM_GROUP,
+                              f"Base de créditos de CBS/IBS ({comp}) — compras creditáveis", "decimal", _dec(value), origin))
+    # grupo da Reforma: pendente, não bloqueia o cálculo de 2026 (o híbrido só existe a partir de 2027)
+    out.append(Suggestion("conformidade.custo_anual", "regime:SIMPLES_HIBRIDO", REFORM_GROUP,
+                          "Custo anual de conformidade — Simples híbrido (exibido à parte, não altera o ranking)",
+                          "decimal", "0.00", {"source": "padrao", "note": "apuração de CBS/IBS no regime regular"}))
     return out
 
 

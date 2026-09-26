@@ -27,6 +27,7 @@ EXTRA_SAMPLE_FILES = {
     "dre_202607": "3.DRE 07.pdf",
     "balancete_202606": "4.Balancete 06.pdf",
     "balancete_202607": "4.Balancete 07.pdf",
+    "livro_202608": "Livro Apuração ICMS 08.pdf",       # opcional (ciclo 4): Registro de Apuração do ICMS
 }
 ALL_SAMPLE_FILES = {**SAMPLE_FILES, **EXTRA_SAMPLE_FILES}
 SAMPLE_CNPJ = "37704456000142"
@@ -38,6 +39,7 @@ DEFAULT_MAPPINGS = {
     ("simples_despesa", "DRE_ALTERDATA"): "3.1.1.15.009",
     ("simples_a_recolher", "BALANCETE_ALTERDATA"): "20308",
     ("inss_a_pagar", "BALANCETE_ALTERDATA"): "20403",
+    ("compras_mercadorias", "BALANCETE_ALTERDATA"): "13101",
     ("fgts_a_pagar", "BALANCETE_ALTERDATA"): "20405",
     ("salarios_a_pagar", "BALANCETE_ALTERDATA"): "20401",
 }
@@ -147,6 +149,36 @@ def golden_assumptions_06_08(view, rules, golden, overrides: dict | None = None)
     g = golden("motor_202606_08")
     base = {(k, "caso"): v for k, v in g["assumption_overrides"].items()}
     return accepted_assumptions(view, rules, {**base, **(overrides or {})})
+
+
+@pytest.fixture(scope="session")
+def rules_2027():
+    from worker.config import load_settings
+    from worker.engine.rules import load_rules
+
+    return load_rules(load_settings().rules_dir, "2027")
+
+
+@pytest.fixture(scope="session")
+def decision_params_2027():
+    from worker.config import decision_params_path, load_settings
+    from worker.engine.decision_params import load_decision_params
+
+    return load_decision_params(decision_params_path(load_settings(), 2027))
+
+
+REFORM_GOLDEN = {"reforma.cbs_aliquota": "0.095", "reforma.ibs_aliquota": "0.001", "reforma.crescimento": "0.05"}
+
+
+def reform_assumptions(view, rules, rules_2027, golden, reform_values: dict | None = REFORM_GOLDEN):
+    """Premissas do caso dourado (ciclo 2) + premissas de 2027 (sugestões aceitas; alíquotas/crescimento dados)."""
+    from worker.engine.assumptions import Assumptions, suggest
+
+    g = golden("motor_202606_08")
+    values = {**g["assumption_overrides"], **(reform_values or {})}
+    rows = [{"key": x.key, "scope": x.scope, "value": values.get(x.key, x.suggested_value)}
+            for x in suggest(view, rules, None, rules_2027)]
+    return Assumptions(rows)
 
 
 @pytest.fixture(scope="session")

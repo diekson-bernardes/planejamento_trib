@@ -1,0 +1,55 @@
+{
+  "domain": "atividades",
+  "fonte": "Descrições de atividade do PGDAS-D (seção 2.7); mapeamento é sugestão confirmada pelo analista | 2027: Sem mudança em 2027 (hipótese A-403).",
+  "verificado": false,
+  "perfis": [
+    {
+      "id": "revenda_mercadorias",
+      "contem": [
+        "Revenda de mercadorias",
+        "exceto para o exterior"
+      ],
+      "nao_contem": [],
+      "anexo": "I",
+      "presumido": "comercio_industria",
+      "cumulativo_no_real": false,
+      "fator_r": false
+    },
+    {
+      "id": "revenda_mercadorias_exterior",
+      "contem": [
+        "Revenda de mercadorias",
+        "para o exterior"
+      ],
+      "nao_contem": [
+        "exceto para o exterior"
+      ],
+      "anexo": "I",
+      "presumido": "comercio_industria",
+      "cumulativo_no_real": false,
+      "fator_r": false,
+      "exportacao": true
+    },
+    {
+      "id": "industrializacao",
+      "contem": [
+        "industrializadas pelo contribuinte"
+      ],
+      "nao_contem": [],
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "cumulativo_no_real": false,
+      "fator_r": false
+    }
+  ],
+  "tributos_zerados_por_declaracao": {
+    "descricao": "Tributo declarado como zero na atividade do PGDAS-D (ST/monofásico/exportação) é sugerido como zerado na simulação do Simples",
+    "tributos": [
+      "icms",
+      "iss",
+      "pis",
+      "cofins",
+      "ipi"
+    ]
+  }
+}

@@ -24,6 +24,7 @@ const SAMPLES = [
   "3.DRE 07.pdf",
   "4.Balancete 06.pdf",
   "4.Balancete 07.pdf",
+  "Livro Apuração ICMS 08.pdf",
 ];
 
 function run(label, command, args, { quiet = false, env = {} } = {}) {

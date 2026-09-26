@@ -1,0 +1,30 @@
+{
+  "domain": "encargos",
+  "fonte": "Lei 8.212/1991 art. 22; LC 123/2006 art. 13 § 3º e art. 18 § 5º-C; tabela FPAS (terceiros) — percentuais de terceiros a confirmar por cliente | 2027: Sem mudança em 2027 (hipótese A-403).",
+  "verificado": false,
+  "cpp": "0.20",
+  "rat_opcoes": [
+    "0.01",
+    "0.02",
+    "0.03"
+  ],
+  "rat_sugerido": "0.02",
+  "fap_minimo": "0.5000",
+  "fap_maximo": "2.0000",
+  "fap_sugerido": "1.0000",
+  "terceiros_por_fpas": {
+    "515": "0.058"
+  },
+  "fpas_sugerido": "515",
+  "simples_anexos_cpp_no_das": [
+    "I",
+    "II",
+    "III",
+    "V"
+  ],
+  "simples_anexo_iv": {
+    "cpp": true,
+    "rat": true,
+    "terceiros": false
+  }
+}

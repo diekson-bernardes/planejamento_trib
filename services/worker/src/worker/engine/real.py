@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
+from worker.engine import cbs_ibs
 from worker.engine.assumptions import Assumptions, comp_scope
 from worker.engine.memory import D, ZERO, Line, brl, money, pct
 from worker.engine.payroll import charges
@@ -91,6 +92,18 @@ def _despesa_simples(view: SnapshotView, comp: str) -> tuple[Decimal, dict]:
     return (D(v["value"]) if v else ZERO), view.origin(v)
 
 
+def _receita_mes(view: SnapshotView, a: Assumptions, comp: str) -> tuple[Decimal, Decimal]:
+    """Receita do mês e parcela monofásica (atividades com PIS ou Cofins zerado) — base de CBS/IBS."""
+    receita = exempt = ZERO
+    for act in view.activities(comp):
+        if a.profile(act.key) is None:
+            raise MissingRule(f"atividade sem perfil confirmado: {act.description}")
+        receita += act.receita
+        if {"pis", "cofins"} & a.zeroed(act.key):
+            exempt += act.receita
+    return receita, exempt
+
+
 def month_pis_cofins(comp: str, view: SnapshotView, a: Assumptions, rules: RuleSet,
                      saldo_credor: dict | None = None) -> list[Line]:
     """PIS/Cofins do mês no Real. `saldo_credor` (tributo → saldo) é atualizado: crédito excedente passa ao mês seguinte."""
@@ -151,7 +164,12 @@ def calculate(comps: list[str], view: SnapshotView, a: Assumptions, rules: RuleS
         for comp in months:
             lucro, o_lucro = _lucro_dre(view, comp)
             simples, o_simples = _despesa_simples(view, comp)
-            month_lines = month_pis_cofins(comp, view, a, rules, saldo_credor)
+            if rules.consumo:   # 2027+: CBS/IBS no lugar do PIS/Cofins
+                receita, exempt = _receita_mes(view, a, comp)
+                icms_iss_mes = a.decimal("icms_regime_normal", comp_scope(comp)) + a.decimal("iss_regime_normal", comp_scope(comp))
+                month_lines = cbs_ibs.month_lines("REAL", comp, receita, exempt, a, rules, saldo_credor, icms_iss_mes)
+            else:
+                month_lines = month_pis_cofins(comp, view, a, rules, saldo_credor)
             pis_cofins = sum((l.amount for l in month_lines), ZERO)
             payroll = charges("REAL", comp, view, a, rules)
             encargos = sum((l.amount for l in payroll), ZERO)
@@ -166,7 +184,8 @@ def calculate(comps: list[str], view: SnapshotView, a: Assumptions, rules: RuleS
             lines += month_lines + payroll
             lines.append(Line("REAL", comp, "reclassificacao_lucro", money(ajustado_mes), ZERO, money(ajustado_mes),
                               f"lucro da DRE {brl(lucro)} + despesa de Simples {brl(simples)} − encargos do regime {brl(encargos)}"
-                              f" − PIS/Cofins do regime {brl(pis_cofins)}"
+                              + (f" − CBS/IBS do regime {brl(pis_cofins)}" if rules.consumo
+                                 else f" − PIS/Cofins do regime {brl(pis_cofins)}")
                               + ("" if icms_na_dre else f" − ICMS/ISS do regime {brl(icms_iss)}"),
                               rules.ref("real", "reclassificacao"), kind="reclassificacao",
                               origin={"lucro": o_lucro, "simples": o_simples}, verified=False))

@@ -5,7 +5,7 @@ import { homologateCase, reclassifyFile, requestXlsx } from "@/app/(app)/cases/a
 import { StatusBadge } from "@/components/StatusBadge";
 import { UploadDropzone } from "@/components/UploadDropzone";
 import { DOC_TYPE_LABEL, formatCnpj, formatCompetence, formatDateTime, monthsBetween } from "@/lib/format";
-import { DOC_TYPES } from "@/lib/schemas";
+import { DOC_TYPES, REQUIRED_DOC_TYPES } from "@/lib/schemas";
 import { getSessionContext } from "@/lib/supabase/server";
 
 const BLOCKING_FILE_STATUS = ["uploaded", "processing", "failed", "rejected", "unclassified", "cnpj_mismatch"];
@@ -49,7 +49,7 @@ export default async function CasePage({
 
   const extracted = (files ?? []).filter((f) => f.status === "extracted");
   const missingCompetences = monthsBetween(tc.period_start, tc.period_end).flatMap((m) =>
-    DOC_TYPES.filter((t) => !extracted.some((f) => f.doc_type === t && f.competence?.startsWith(m))).map(
+    REQUIRED_DOC_TYPES.filter((t) => !extracted.some((f) => f.doc_type === t && f.competence?.startsWith(m))).map(
       (t) => `${DOC_TYPE_LABEL[t]} ${formatCompetence(m)}`,
     ),
   );

@@ -18,10 +18,11 @@ from reportlab.platypus import KeepTogether, PageBreak, Paragraph, SimpleDocTemp
 
 rl_config.invariant = 1
 
-REGIME_NAME = {"SIMPLES": "Simples Nacional", "PRESUMIDO": "Lucro Presumido", "REAL": "Lucro Real"}
+REGIME_NAME = {"SIMPLES": "Simples Nacional", "PRESUMIDO": "Lucro Presumido", "REAL": "Lucro Real",
+               "SIMPLES_HIBRIDO": "Simples Nacional (híbrido)"}
 REGIMES = ("SIMPLES", "PRESUMIDO", "REAL")
-TAX_ORDER = ("irpj", "adicional_irpj", "csll", "cofins", "pis", "cpp", "rat", "terceiros", "icms", "iss", "ipi")
-TAX_LABEL = {"irpj": "IRPJ", "adicional_irpj": "Adic. IRPJ", "csll": "CSLL", "cofins": "COFINS", "pis": "PIS",
+TAX_ORDER = ("irpj", "adicional_irpj", "csll", "cofins", "pis", "cbs", "ibs", "cpp", "rat", "terceiros", "icms", "iss", "ipi")
+TAX_LABEL = {"cbs": "CBS", "ibs": "IBS", "irpj": "IRPJ", "adicional_irpj": "Adic. IRPJ", "csll": "CSLL", "cofins": "COFINS", "pis": "PIS",
              "cpp": "CPP", "rat": "RAT", "terceiros": "Terceiros", "icms": "ICMS", "iss": "ISS", "ipi": "IPI"}
 MONTHS = ("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
 ORIGIN_ABBR = {"realizado": "R", "estimado": "E", "projetado": "P", "orcamento": "O"}
@@ -113,11 +114,11 @@ def _monthly(d: ReportData, regime: str) -> list:
             continue
         grid.setdefault(l["tax"], {}).setdefault(l["period"], Decimal("0"))
         grid[l["tax"]][l["period"]] += Decimal(str(l["amount"]))
-    periods = months + (quarters if regime != "SIMPLES" else [])
-    header = ["TRIBUTO"] + list(MONTHS) + (["T1", "T2", "T3", "T4"] if regime != "SIMPLES" else []) + ["TOTAL"]
+    periods = months + (quarters if not regime.startswith("SIMPLES") else [])
+    header = ["TRIBUTO"] + list(MONTHS) + (["T1", "T2", "T3", "T4"] if not regime.startswith("SIMPLES") else []) + ["TOTAL"]
     origins = d.result.get("origins", {})
     rows = [header, ["Origem"] + [ORIGIN_ABBR.get(origins.get(m), "") for m in months]
-            + (["", "", "", ""] if regime != "SIMPLES" else []) + [""]]
+            + (["", "", "", ""] if not regime.startswith("SIMPLES") else []) + [""]]
     col_total = {p: Decimal("0") for p in periods}
     for tax in [t for t in TAX_ORDER if t in grid] + sorted(t for t in grid if t not in TAX_ORDER):
         vals = [grid[tax].get(p, Decimal("0")) for p in periods]
@@ -132,6 +133,7 @@ def story_for(d: ReportData) -> list:
     st = _styles()
     sim = d.result.get("simulation", {})
     regimes = sim.get("regimes", {})
+    order = [r for r in ("SIMPLES", "SIMPLES_HIBRIDO", "PRESUMIDO", "REAL") if r in regimes]   # mesma ordem da tela
     rec = d.computed
     story = [
         Paragraph(f"Planejamento tributário — exercício {d.year}", st["title"]),
@@ -159,9 +161,9 @@ def story_for(d: ReportData) -> list:
 
     # ---------------------------------------------------------------- comparativo (formato SPTE)
     story.append(Paragraph("Comparativo do exercício", st["h2"]))
-    cols = [t for t in TAX_ORDER if any(Decimal(regimes.get(r, {}).get("by_tax", {}).get(t, "0") or "0") for r in REGIMES)]
+    cols = [t for t in TAX_ORDER if any(Decimal(regimes.get(r, {}).get("by_tax", {}).get(t, "0") or "0") for r in order)]
     data = [["Regime"] + [TAX_LABEL[t] for t in cols] + ["TOTAL", "Alíq. efetiva", "Conformidade*"]]
-    for r in REGIMES:
+    for r in order:
         rr = regimes.get(r, {})
         if rr.get("status") != "calculado":
             data.append([REGIME_NAME[r]] + ["—"] * len(cols) + ["não calculado", "—", "—"])
@@ -181,13 +183,13 @@ def story_for(d: ReportData) -> list:
         story.append(Spacer(1, 2 * mm))
         story.append(_table([["Carga por natureza", "Consumo", "Renda", "Folha"]] + [
             [REGIME_NAME[r], brl(carga[r]["consumo"]), brl(carga[r]["renda"]), brl(carga[r]["folha"])]
-            for r in REGIMES if r in carga], font=7))
+            for r in order if r in carga], font=7))
 
     # ---------------------------------------------------------------- sensibilidade
     story.append(Paragraph("Sensibilidade e ponto de virada", st["h2"]))
     sens_rows = [["Variável", "Cenário base", "Ponto de virada", "Novo líder", "Distância", "Robustez", "Limite jurídico"]]
     for s in d.sensitivity:
-        money_kind = s["tipo"] == "multiplicador"
+        money_kind = s["tipo"] == "multiplicador" and s.get("unidade", "reais") == "reais"
         base = ("R$ " + brl(s["base_valor"])) if money_kind else pct(s["base_valor"])
         turn = "sem virada no intervalo" if s["sem_virada"] else (
             ("R$ " + brl(s["virada_valor"])) if money_kind else pct(s["virada_valor"]))
@@ -206,7 +208,7 @@ def story_for(d: ReportData) -> list:
     story.append(Paragraph("Origem do mês: R = realizado (documentos homologados), E = estimado (receita do PGDAS-D e "
                            "demais valores proporcionais), P = projetado (média dos meses completos), O = orçamento informado. "
                            "IRPJ/CSLL do Presumido e do Real são trimestrais (colunas T1–T4).", st["small"]))
-    for r in REGIMES:
+    for r in order:
         if regimes.get(r, {}).get("status") != "calculado":
             continue
         story.append(KeepTogether([Paragraph(f"Resultado: {REGIME_NAME[r]}", st["body"]), _table(_monthly(d, r), font=6),

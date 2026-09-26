@@ -1,0 +1,46 @@
+{
+  "domain": "elegibilidade",
+  "fonte": "LC 123/2006 arts. 3º, 17, 19, 20, 30 e 31; Lei 9.718/1998 arts. 13 e 14 | 2027: Sem mudança em 2027 (hipótese A-403).",
+  "verificado": false,
+  "simples": {
+    "teto_anual": "4800000.00",
+    "tolerancia_excesso": "0.20",
+    "sublimite_anual": "3600000.00",
+    "limite_mensal_inicio": "400000.00",
+    "declaracoes": [
+      {
+        "chave": "eleg.socio_pj",
+        "pergunta": "Algum sócio é pessoa jurídica?",
+        "impede_quando": "sim"
+      },
+      {
+        "chave": "eleg.participacao_receita_global",
+        "pergunta": "Sócios participam de outras empresas cuja receita somada ultrapassa o teto (art. 3º, § 4º)?",
+        "impede_quando": "sim"
+      },
+      {
+        "chave": "eleg.atividade_vedada",
+        "pergunta": "Exerce atividade vedada ao Simples (art. 17)?",
+        "impede_quando": "sim"
+      },
+      {
+        "chave": "eleg.debitos_sem_suspensao",
+        "pergunta": "Possui débitos com a Fazenda/INSS sem exigibilidade suspensa?",
+        "impede_quando": "sim"
+      }
+    ]
+  },
+  "presumido": {
+    "limite_receita_ano_anterior": "78000000.00",
+    "declaracoes": [
+      {
+        "chave": "eleg.obrigatoriedade_real",
+        "pergunta": "Há hipótese de obrigatoriedade do Lucro Real (atividade financeira, lucros do exterior, benefício de isenção/redução, factoring, securitização — Lei 9.718, art. 14)?",
+        "impede_quando": "sim"
+      }
+    ]
+  },
+  "real": {
+    "declaracoes": []
+  }
+}

@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ASSUMPTION_GROUP_LABEL, formatBRL, formatCompetence, formatDateTime, formatPct, REGIME_LABEL } from "@/lib/format";
 import { getSessionContext } from "@/lib/supabase/server";
 
-const GROUP_ORDER = ["atividades", "elegibilidade", "icms_iss", "receitas", "pis_cofins", "real", "folha", "projecao", "conformidade"];
+const GROUP_ORDER = ["atividades", "elegibilidade", "icms_iss", "receitas", "pis_cofins", "real", "folha", "projecao", "conformidade", "reforma_2027"];
 
 type SimulationSummary = {
   competences?: string[];
@@ -67,7 +67,10 @@ export default async function PlanningPage({
   const lastCalc = (jobs ?? []).find((j) => j.kind === "calculate" || j.kind === "project");
   const calcNote = lastCalc && lastCalc.status !== "queued" && lastCalc.status !== "running" ? lastCalc.last_error : null;
   const assumptions = (rows ?? []) as (AssumptionRow & { grp: string })[];
-  const pending = assumptions.filter((a) => a.status !== "confirmed").length;
+  // o grupo reforma_2027 (alíquotas de CBS/IBS, crescimento, base de créditos) só bloqueia o exercício de 2027
+  const pending = assumptions.filter((a) => a.status !== "confirmed" && a.grp !== "reforma_2027").length;
+  const pending2027 = assumptions.filter((a) => a.status !== "confirmed" && a.grp === "reforma_2027").length;
+  const hasReform = assumptions.some((a) => a.grp === "reforma_2027");
   const groups = GROUP_ORDER.map((g) => [g, assumptions.filter((a) => a.grp === g)] as const).filter(([, list]) => list.length);
 
   return (
@@ -100,7 +103,10 @@ export default async function PlanningPage({
       {assumptions.length > 0 && (
         <section className="space-y-4" aria-labelledby="prem-title">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="prem-title">Premissas ({assumptions.length - pending}/{assumptions.length} confirmadas)</h2>
+            <h2 id="prem-title">
+              Premissas ({assumptions.length - pending - pending2027}/{assumptions.length} confirmadas
+              {pending2027 > 0 ? ` · ${pending2027} de 2027 pendente${pending2027 > 1 ? "s" : ""}` : ""})
+            </h2>
             <div className="flex gap-2">
               {homologated && (
                 <form action={startPlanning}>
@@ -136,21 +142,35 @@ export default async function PlanningPage({
         <section className="card space-y-3" aria-labelledby="proj-title">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 id="proj-title">Projeção 2026 e recomendação</h2>
+              <h2 id="proj-title">Projeção do exercício e recomendação</h2>
               <p className="text-sm text-slate-600">
                 Exercício completo pelo motor (meses realizados, estimados pelo PGDAS-D e projetados pela média ou pelo
                 orçamento), sensibilidade com ponto de virada e recomendação para aprovação do responsável técnico.
-                Premissas pendentes geram uma prévia bloqueada.
+                Premissas pendentes geram uma prévia bloqueada. 2027: projeção de 2026 deslocada com o crescimento
+                informado, com CBS/IBS no lugar de PIS/Cofins e o Simples híbrido como quarta alternativa.
               </p>
             </div>
-            <form action={requestProjection}>
-              <input type="hidden" name="caseId" value={id} />
-              <button type="submit" className="btn-primary" disabled={!homologated || running}>Projetar 2026</button>
-            </form>
+            <div className="flex gap-2">
+              <form action={requestProjection}>
+                <input type="hidden" name="caseId" value={id} />
+                <input type="hidden" name="year" value="2026" />
+                <button type="submit" className="btn-primary" disabled={!homologated || running}>Projetar 2026</button>
+              </form>
+              {hasReform && (
+                <form action={requestProjection}>
+                  <input type="hidden" name="caseId" value={id} />
+                  <input type="hidden" name="year" value="2027" />
+                  <button type="submit" className="btn-secondary" disabled={!homologated || running}
+                    title={pending2027 > 0 ? "Premissas de 2027 pendentes: a projeção sai como prévia bloqueada" : undefined}>
+                    {pending2027 > 0 ? `Projetar 2027 (${pending2027} pendente${pending2027 > 1 ? "s" : ""})` : "Projetar 2027"}
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
           {!!projections?.length && (
             <table className="data-table">
-              <thead><tr><th>Data</th><th>Resultado</th><th>Recomendação</th><th>Fluxo</th><th /></tr></thead>
+              <thead><tr><th>Data</th><th>Exercício</th><th>Resultado</th><th>Recomendação</th><th>Fluxo</th><th /></tr></thead>
               <tbody>
                 {projections.map((p) => {
                   const rec = (p.recommendation ?? {}) as { status?: string; regime?: string; economia_vs_segundo_pct?: string };
@@ -159,6 +179,7 @@ export default async function PlanningPage({
                   return (
                     <tr key={p.id}>
                       <td className="whitespace-nowrap">{formatDateTime(p.created_at)}</td>
+                      <td>{p.year || "—"}</td>
                       <td>{p.status === "done" ? <StatusBadge status={rec.status ?? "done"} /> : <StatusBadge status="failed" label="Falhou" />}</td>
                       <td>{p.status === "done"
                         ? (rec.regime ? `${REGIME_LABEL[rec.regime]}${rec.economia_vs_segundo_pct ? ` (${formatPct(rec.economia_vs_segundo_pct)} abaixo do 2º)` : ""}` : "—")
