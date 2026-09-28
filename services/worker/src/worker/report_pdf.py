@@ -56,6 +56,7 @@ class ReportData:
     approver_name: str
     approver_crc: str
     approved_at: str          # dd/mm/aaaa hh:mm (UTC) — data do registro de aprovação
+    rapido: dict | None = None  # planejamento rápido: CNAE e origem dos dados (PDF × digitado)
 
 
 def brl(value) -> str:
@@ -135,11 +136,20 @@ def story_for(d: ReportData) -> list:
     regimes = sim.get("regimes", {})
     order = [r for r in ("SIMPLES", "SIMPLES_HIBRIDO", "PRESUMIDO", "REAL") if r in regimes]   # mesma ordem da tela
     rec = d.computed
+    title = "Planejamento tributário rápido" if d.rapido else "Planejamento tributário"
     story = [
-        Paragraph(f"Planejamento tributário — exercício {d.year}", st["title"]),
+        Paragraph(f"{title} — exercício {d.year}", st["title"]),
         Paragraph(f"<b>{d.legal_name}</b> · CNPJ {cnpj_fmt(d.cnpj)} · Escritório: {d.office_name}", st["body"]),
         Paragraph(f"Data-base normativa: regras {d.rules_version} (exercício {d.year}) · política de decisão "
                   f"{d.decision_version} · limiar de inconclusivo {pct(d.threshold)}", st["body"]),
+    ]
+    if d.rapido:
+        cnae = d.rapido.get("cnae") or ""
+        cnae_fmt = f"{cnae[:4]}-{cnae[4]}/{cnae[5:]}" if len(cnae) == 7 else "—"
+        story.append(Paragraph(f"Planejamento rápido: faturamento dos últimos 12 meses, folha e DRE · CNAE principal "
+                               f"{cnae_fmt} {d.rapido.get('cnae_descricao') or ''} · origem dos dados: "
+                               + "; ".join(f"{k}: {v}" for k, v in d.rapido["origem"].items()) + ".", st["body"]))
+    story += [
         Spacer(1, 3 * mm),
         Paragraph("Recomendação", st["h2"]),
         Paragraph(f"<b>{STATUS_LABEL.get(rec.get('status'), rec.get('status'))}.</b> {rec.get('texto', '')}", st["body"]),
@@ -184,6 +194,17 @@ def story_for(d: ReportData) -> list:
         story.append(_table([["Carga por natureza", "Consumo", "Renda", "Folha"]] + [
             [REGIME_NAME[r], brl(carga[r]["consumo"]), brl(carga[r]["renda"]), brl(carga[r]["folha"])]
             for r in order if r in carga], font=7))
+
+    # ---------------------------------------------------------------- faixa do Simples (anexo × RBT12)
+    faixas = [l for l in d.lines if l["tax"] == "faixa" and l["regime"] == "SIMPLES" and l.get("origin")]
+    if faixas:
+        story.append(Paragraph("Faixa do Simples Nacional por mês", st["h2"]))
+        rows = [["Mês", "Anexo", "Faixa", "RBT12", "Alíq. nominal", "Parcela a deduzir", "Alíq. efetiva"]]
+        for l in faixas:
+            o = l["origin"]
+            rows.append([f"{l['period'][5:7]}/{l['period'][:4]}", o["anexo"], f"{o['faixa']}ª", brl(o["rbt12"]),
+                         pct(o["nominal"]), brl(o["deducao"]), pct(o["efetiva"])])
+        story.append(_table(rows, font=7))
 
     # ---------------------------------------------------------------- sensibilidade
     story.append(Paragraph("Sensibilidade e ponto de virada", st["h2"]))
@@ -259,9 +280,28 @@ def report_data(row: dict) -> ReportData:
         snapshot_sha256=row["snapshot_sha256"].strip(), result_hash=(row["result_hash"] or "").strip(),
         threshold=Decimal(str(row["threshold"])), result=row["result"], sensitivity=row["sensitivity"],
         computed=row["computed"], assumptions=row["assumptions"],
-        lines=[{"regime": l["regime"], "period": l["period"], "tax": l["tax"], "kind": l["kind"], "amount": l["amount"]}
+        lines=[{"regime": l["regime"], "period": l["period"], "tax": l["tax"], "kind": l["kind"], "amount": l["amount"],
+                "origin": l.get("origin") if l["tax"] == "faixa" else None}
                for l in row["lines"]],
         events=[{"event": e["event"], "comment": e["comment"]} for e in row["events"]],
         approver_name=approver.get("professional_name") or "—", approver_crc=approver.get("crc") or "—",
         approved_at=approved.astimezone(timezone.utc).strftime("%d/%m/%Y %H:%M") if approved else "—",
+        rapido=_rapido_info(row) if row.get("kind") == "rapido" else None,
     )
+
+
+ORIGIN_DOCS = (("Faturamento", "DECLARACAO_FATURAMENTO", "FATURAMENTO"), ("Folha", "FOLHA_ALTERDATA", "FOLHA"),
+               ("DRE", "DRE_ALTERDATA", "DRE"))
+
+
+def _rapido_info(row: dict) -> dict:
+    """Origem de cada documento do dossiê rápido: meses em PDF e meses digitados."""
+    files = row.get("snapshot_files") or []
+    manual = row.get("manual_values") or []
+    origem = {}
+    for label, pdf, typed in ORIGIN_DOCS:
+        pdf_n = sum(1 for f in files if f.get("doc_type") == pdf)
+        typed_months = sorted({str(m["competence"])[:7] for m in manual if m.get("doc_type") == typed})
+        parts = ([f"{pdf_n} PDF"] if pdf_n else []) + ([f"{len(typed_months)} mês(es) digitado(s)"] if typed_months else [])
+        origem[label] = " + ".join(parts) or "—"
+    return {"cnae": row.get("cnae_principal"), "cnae_descricao": row.get("cnae_descricao"), "origem": origem}

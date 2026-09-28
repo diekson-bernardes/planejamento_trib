@@ -46,6 +46,20 @@ export default async function NewCasePage({ searchParams }: { searchParams: Prom
             </div>
           </div>
         </fieldset>
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-semibold">Tipo do dossiê</legend>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="radio" name="kind" value="completo" defaultChecked className="mt-1" />
+            <span><b>Dossiê completo</b> — PGDAS-D, folha, DRE e balancete por competência, com conciliação.</span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="radio" name="kind" value="rapido" className="mt-1" />
+            <span>
+              <b>Planejamento rápido (2027)</b> — faturamento dos últimos 12 meses, folha e DRE (PDF ou digitados);
+              compara Simples por dentro, Simples por fora e Lucro Presumido. Informe os 12 meses no período.
+            </span>
+          </label>
+        </fieldset>
         <fieldset className="grid gap-3 sm:grid-cols-2">
           <legend className="mb-2 text-sm font-semibold">Período</legend>
           <div>

@@ -25,6 +25,8 @@ def _get(values: list[ExtractedValue], key: str, section: str | None = None, col
 
 
 def validate(result: ParseResult, monthly: bool = True) -> list[ValidationResult]:
+    if result.doc_type == DocType.DECLARACAO_FATURAMENTO:   # período de 12 meses, não mensal
+        return _declaracao_faturamento(result.values)
     out = [ValidationResult(
         rule="periodo_mensal", status="pass" if monthly else "fail",
         detail=None if monthly else "Período do documento não corresponde a um único mês",
@@ -37,6 +39,23 @@ def validate(result: ParseResult, monthly: bool = True) -> list[ValidationResult
         DocType.LIVRO_ICMS_ALTERDATA: _livro_icms,
     }[result.doc_type]
     return out + fn(result.values)
+
+
+def _declaracao_faturamento(values: list[ExtractedValue]) -> list[ValidationResult]:
+    """Soma dos meses = Total Geral; 12 meses consecutivos (sem mês repetido nem lacuna)."""
+    meses = [v for v in values if v.field_key == "faturamento.mes"]
+    total = _get(values, "total_geral")
+    out = [check("faturamento.soma_igual_total", total, sum((v.value for v in meses), ZERO)) if total is not None
+           else ValidationResult(rule="faturamento.soma_igual_total", status="fail", detail="Total Geral ausente")]
+    comps = sorted(v.competence for v in meses)
+    ordinal = [int(c[:4]) * 12 + int(c[5:7]) for c in comps]
+    consecutivos = len(comps) == 12 and len(set(comps)) == 12 and ordinal[-1] - ordinal[0] == 11
+    out.append(ValidationResult(
+        rule="faturamento.12_meses_consecutivos", status="pass" if consecutivos else "fail",
+        expected=Decimal(12), actual=Decimal(len(set(comps))), diff=Decimal(len(set(comps)) - 12),
+        detail=(comps[0] + " a " + comps[-1]) if comps else "nenhum mês",
+    ))
+    return out
 
 
 def _livro_icms(values: list[ExtractedValue]) -> list[ValidationResult]:

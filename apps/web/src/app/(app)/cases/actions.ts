@@ -7,7 +7,11 @@ import { redirect } from "next/navigation";
 import type { TablesInsert } from "@/lib/database.types";
 import {
   adjustValueSchema,
+  cnaeSchema,
   createCaseSchema,
+  MANUAL_FIELDS,
+  type ManualDoc,
+  manualValuesSchema,
   firstIssue,
   justifySchema,
   normalizeDecimal,
@@ -55,6 +59,7 @@ export async function createCase(formData: FormData) {
     legalName: formData.get("legalName") || undefined,
     periodStart: formData.get("periodStart"),
     periodEnd: formData.get("periodEnd"),
+    kind: formData.get("kind") || undefined,
   });
   if (!parsed.success) withError("/cases/new", firstIssue(parsed.error));
   const input = parsed.data;
@@ -81,6 +86,7 @@ export async function createCase(formData: FormData) {
       company_id: companyId,
       period_start: `${input.periodStart}-01`,
       period_end: `${input.periodEnd}-${String(lastDay).padStart(2, "0")}`,
+      kind: input.kind,
     })
     .select("id")
     .single();
@@ -203,4 +209,71 @@ export async function requestXlsx(formData: FormData) {
   const { error } = await supabase.rpc("request_xlsx_export", { p_case_id: caseId });
   if (error) withError(`/cases/${caseId}`, error.message);
   redirect(`/cases/${caseId}?ok=${encodeURIComponent("Exportação XLSX solicitada. Atualize em instantes.")}`);
+}
+
+/* ------------------------------------------------------------------ planejamento rápido (ciclo 5) */
+/** Digitação de faturamento, folha ou DRE de um mês sem PDF (a RPC recusa mês com PDF extraído). */
+export async function enterManualValues(formData: FormData) {
+  const caseId = String(formData.get("caseId") ?? "");
+  const docType = String(formData.get("docType") ?? "") as ManualDoc;
+  const back = `/cases/${caseId}`;
+  const values: Record<string, string> = {};
+  for (const key of MANUAL_FIELDS[docType] ?? []) {
+    const raw = String(formData.get(key) ?? "").trim();
+    if (raw) values[key] = raw;
+  }
+  const parsed = manualValuesSchema.safeParse({ caseId, docType, competence: formData.get("competence"), values });
+  if (!parsed.success) withError(back, firstIssue(parsed.error));
+  const v = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("enter_manual_values", {
+    p_case_id: v.caseId,
+    p_doc_type: v.docType,
+    p_competence: `${v.competence}-01`,
+    p_values: v.values,
+  });
+  if (error) withError(back, error.message);
+  revalidatePath(back);
+  redirect(`${back}?ok=${encodeURIComponent("Valores digitados gravados.")}`);
+}
+
+export async function clearManualValues(formData: FormData) {
+  const caseId = String(formData.get("caseId") ?? "");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("clear_manual_values", {
+    p_case_id: caseId,
+    p_doc_type: String(formData.get("docType") ?? ""),
+    p_competence: `${String(formData.get("competence") ?? "")}-01`,
+  });
+  if (error) withError(`/cases/${caseId}`, error.message);
+  revalidatePath(`/cases/${caseId}`);
+  redirect(`/cases/${caseId}?ok=${encodeURIComponent("Valores digitados removidos.")}`);
+}
+
+/** Consulta o CNAE na Receita pela automação (job do worker). */
+export async function requestCompanyLookup(formData: FormData) {
+  const caseId = String(formData.get("caseId") ?? "");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("request_company_lookup", { p_company_id: String(formData.get("companyId") ?? "") });
+  if (error) withError(`/cases/${caseId}`, error.message);
+  redirect(`/cases/${caseId}?ok=${encodeURIComponent("Consulta do CNAE solicitada. Atualize em instantes.")}`);
+}
+
+export async function setCompanyCnae(formData: FormData) {
+  const caseId = String(formData.get("caseId") ?? "");
+  const parsed = cnaeSchema.safeParse({
+    companyId: formData.get("companyId"),
+    cnae: String(formData.get("cnae") ?? ""),
+    description: formData.get("description") || undefined,
+  });
+  if (!parsed.success) withError(`/cases/${caseId}`, firstIssue(parsed.error));
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_company_cnae", {
+    p_company_id: parsed.data.companyId,
+    p_cnae: parsed.data.cnae,
+    p_descricao: parsed.data.description ?? "",
+  });
+  if (error) withError(`/cases/${caseId}`, error.message);
+  revalidatePath(`/cases/${caseId}`);
+  redirect(`/cases/${caseId}?ok=${encodeURIComponent("CNAE gravado.")}`);
 }

@@ -134,3 +134,35 @@ describe("Reforma 2027 (ciclo 4)", () => {
     expect(mappingSchema.safeParse({ target: "compras_servicos", docType: "BALANCETE_ALTERDATA", accountCode: "1" }).success).toBe(false);
   });
 });
+
+describe("planejamento rápido (ciclo 5)", () => {
+  const uuid = "3f1d2c4b-5a6e-4f70-8a9b-0c1d2e3f4a5b";
+  const company = { companyId: uuid };
+
+  it("exige 12 meses no período do dossiê rápido", async () => {
+    const { createCaseSchema } = await import("@/lib/schemas");
+    expect(createCaseSchema.safeParse({ ...company, periodStart: "2025-09", periodEnd: "2026-08", kind: "rapido" }).success).toBe(true);
+    expect(createCaseSchema.safeParse({ ...company, periodStart: "2026-01", periodEnd: "2026-08", kind: "rapido" }).success).toBe(false);
+    const completo = createCaseSchema.safeParse({ ...company, periodStart: "2026-06", periodEnd: "2026-08" });
+    expect(completo.success && completo.data.kind).toBe("completo");
+  });
+
+  it("valida a digitação por documento", async () => {
+    const { manualValuesSchema } = await import("@/lib/schemas");
+    const base = { caseId: uuid, competence: "2026-05" };
+    const ok = manualValuesSchema.safeParse({ ...base, docType: "FOLHA", values: { "folha.salarios": "40.000,00" } });
+    expect(ok.success && ok.data.values["folha.salarios"]).toBe("40000.00");
+    expect(manualValuesSchema.safeParse({ ...base, docType: "DRE", values: { "dre.resultado": "-500,00" } }).success).toBe(true);
+    expect(manualValuesSchema.safeParse({ ...base, docType: "FOLHA", values: { "folha.salarios": "-1" } }).success).toBe(false);
+    expect(manualValuesSchema.safeParse({ ...base, docType: "FOLHA", values: { "dre.resultado": "1" } }).success).toBe(false);
+    expect(manualValuesSchema.safeParse({ ...base, docType: "FATURAMENTO", values: {} }).success).toBe(false);
+  });
+
+  it("normaliza o CNAE e exige 7 dígitos", async () => {
+    const { cnaeSchema, REQUIRED_DOC_TYPES } = await import("@/lib/schemas");
+    const ok = cnaeSchema.safeParse({ companyId: uuid, cnae: "4744-0/01" });
+    expect(ok.success && ok.data.cnae).toBe("4744001");
+    expect(cnaeSchema.safeParse({ companyId: uuid, cnae: "47440" }).success).toBe(false);
+    expect(REQUIRED_DOC_TYPES).not.toContain("DECLARACAO_FATURAMENTO");
+  });
+});

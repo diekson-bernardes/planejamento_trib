@@ -20,6 +20,8 @@ class Settings(BaseModel):
     rules_dir: str = str(DEFAULT_RULES_DIR)
     rules_exercise: str = "2026"
     decision_params: str = str(DEFAULT_RULES_DIR / "decisao.json")
+    cnpj_lookup_url: str = ""          # automação n8n (MCP); vazio = consulta desativada, CNAE só digitado
+    cnpj_lookup_timeout: float = Field(default=20.0, gt=0)
 
 
 def decision_params_path(settings: "Settings", year: int) -> str:
@@ -45,4 +47,10 @@ def load_settings() -> Settings:
         decision_params=os.environ.get(
             "DECISION_PARAMS", os.path.join(os.environ.get("RULES_DIR", str(DEFAULT_RULES_DIR)), "decisao.json")
         ),
+        cnpj_lookup_url=os.environ.get("CNPJ_LOOKUP_MCP_URL", ""),
+        cnpj_lookup_timeout=float(os.environ.get("CNPJ_LOOKUP_TIMEOUT", "20")),
     )
+
+
+def cnae_table_path(settings: Settings) -> str:
+    return os.path.join(settings.rules_dir, "cnae_anexos.json")

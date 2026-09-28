@@ -203,6 +203,13 @@ export type Database = {
       }
       companies: {
         Row: {
+          cnae_atualizado_em: string | null
+          cnae_consulta_erro: string | null
+          cnae_consulta_status: string | null
+          cnae_descricao: string | null
+          cnae_origem: string | null
+          cnae_principal: string | null
+          cnaes_secundarios: Json
           cnpj: string
           created_at: string
           id: string
@@ -210,6 +217,13 @@ export type Database = {
           office_id: string
         }
         Insert: {
+          cnae_atualizado_em?: string | null
+          cnae_consulta_erro?: string | null
+          cnae_consulta_status?: string | null
+          cnae_descricao?: string | null
+          cnae_origem?: string | null
+          cnae_principal?: string | null
+          cnaes_secundarios?: Json
           cnpj: string
           created_at?: string
           id?: string
@@ -217,6 +231,13 @@ export type Database = {
           office_id: string
         }
         Update: {
+          cnae_atualizado_em?: string | null
+          cnae_consulta_erro?: string | null
+          cnae_consulta_status?: string | null
+          cnae_descricao?: string | null
+          cnae_origem?: string | null
+          cnae_principal?: string | null
+          cnaes_secundarios?: Json
           cnpj?: string
           created_at?: string
           id?: string
@@ -364,6 +385,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "jobs_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manual_values: {
+        Row: {
+          case_id: string
+          competence: string
+          doc_type: string
+          entered_at: string
+          entered_by: string
+          field_key: string
+          id: string
+          office_id: string
+          value: number
+        }
+        Insert: {
+          case_id: string
+          competence: string
+          doc_type: string
+          entered_at?: string
+          entered_by?: string
+          field_key: string
+          id?: string
+          office_id: string
+          value: number
+        }
+        Update: {
+          case_id?: string
+          competence?: string
+          doc_type?: string
+          entered_at?: string
+          entered_by?: string
+          field_key?: string
+          id?: string
+          office_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_values_case_id_office_id_fkey"
+            columns: ["case_id", "office_id"]
+            isOneToOne: false
+            referencedRelation: "tax_cases"
+            referencedColumns: ["id", "office_id"]
+          },
+          {
+            foreignKeyName: "manual_values_office_id_fkey"
             columns: ["office_id"]
             isOneToOne: false
             referencedRelation: "offices"
@@ -1093,6 +1165,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          kind: string
           office_id: string
           period_end: string
           period_start: string
@@ -1103,6 +1176,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          kind?: string
           office_id: string
           period_end: string
           period_start: string
@@ -1113,6 +1187,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          kind?: string
           office_id?: string
           period_end?: string
           period_start?: string
@@ -1315,6 +1390,10 @@ export type Database = {
         Args: { p_choices: Json; p_type: string; p_value: Json }
         Returns: boolean
       }
+      clear_manual_values: {
+        Args: { p_case_id: string; p_competence: string; p_doc_type: string }
+        Returns: undefined
+      }
       confirm_assumption: {
         Args: { p_id: string; p_justification: string; p_value: Json }
         Returns: undefined
@@ -1326,6 +1405,15 @@ export type Database = {
           p_kind: string
           p_office: string
           p_payload: Json
+        }
+        Returns: undefined
+      }
+      enter_manual_values: {
+        Args: {
+          p_case_id: string
+          p_competence: string
+          p_doc_type: string
+          p_values: Json
         }
         Returns: undefined
       }
@@ -1346,6 +1434,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          kind: string
           office_id: string
           period_end: string
           period_start: string
@@ -1358,6 +1447,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rapido_blockers: { Args: { p_case_id: string }; Returns: string[] }
       recommendation_for_update: {
         Args: { p_id: string }
         Returns: {
@@ -1384,6 +1474,10 @@ export type Database = {
         }
       }
       request_calculation: { Args: { p_case_id: string }; Returns: undefined }
+      request_company_lookup: {
+        Args: { p_company_id: string }
+        Returns: undefined
+      }
       request_planning: { Args: { p_case_id: string }; Returns: undefined }
       request_projection: {
         Args: { p_case_id: string; p_year?: number }
@@ -1397,6 +1491,10 @@ export type Database = {
       request_xlsx_export: { Args: { p_case_id: string }; Returns: undefined }
       return_recommendation: {
         Args: { p_comment: string; p_id: string }
+        Returns: undefined
+      }
+      set_company_cnae: {
+        Args: { p_cnae: string; p_company_id: string; p_descricao: string }
         Returns: undefined
       }
       set_decision_threshold: {

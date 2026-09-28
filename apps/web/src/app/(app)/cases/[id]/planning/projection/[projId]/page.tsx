@@ -9,6 +9,7 @@ import {
   type EventRow,
   type RecommendationRow,
 } from "@/components/RecommendationPanel";
+import { SimplesBandTable } from "@/components/SimplesBandTable";
 import { SensitivityTable, type SensitivityRow } from "@/components/SensitivityTable";
 import { formatDateTime, MONTH_ORIGIN, orderedRegimes } from "@/lib/format";
 import { getSessionContext } from "@/lib/supabase/server";
@@ -61,7 +62,7 @@ export default async function ProjectionPage({
 
   const lines: ProjectionLine[] = [];
   for (let from = 0; ; from += 1000) {
-    const { data } = await supabase.from("projection_lines").select("regime, period, tax, kind, amount")
+    const { data } = await supabase.from("projection_lines").select("regime, period, tax, kind, amount, origin")
       .eq("projection_id", projId).order("ordinal").range(from, from + 999);
     if (!data?.length) break;
     lines.push(...(data as ProjectionLine[]));
@@ -102,6 +103,8 @@ export default async function ProjectionPage({
         <h2 id="cmp-title">Comparativo do exercício</h2>
         <ComparisonTable result={sim} />
       </section>
+
+      <SimplesBandTable lines={lines} />
 
       <section className="card space-y-3" aria-labelledby="sens-title">
         <h2 id="sens-title">Sensibilidade e ponto de virada</h2>

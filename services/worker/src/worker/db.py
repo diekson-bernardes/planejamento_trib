@@ -424,7 +424,10 @@ def get_report_data(conn: psycopg.Connection, recommendation_id, office_id) -> d
     rec = conn.execute(
         "select r.*, p.year, p.result, p.sensitivity, p.recommendation as computed, p.assumptions, p.rules_version, "
         "p.rules_hash, p.decision_version, p.decision_hash, p.threshold, p.result_hash, p.snapshot_sha256, "
-        "p.created_at as projected_at, c.period_start, c.period_end, co.legal_name, co.cnpj, o.name as office_name "
+        "p.created_at as projected_at, c.period_start, c.period_end, c.kind, co.legal_name, co.cnpj, "
+        "co.cnae_principal, co.cnae_descricao, o.name as office_name, "
+        "(select s.content -> 'manual_values' from snapshots s where s.id = p.snapshot_id) as manual_values, "
+        "(select s.content -> 'files' from snapshots s where s.id = p.snapshot_id) as snapshot_files "
         "from recommendations r join projections p on p.id = r.projection_id and p.office_id = r.office_id "
         "join tax_cases c on c.id = r.case_id and c.office_id = r.office_id "
         "join companies co on co.id = c.company_id join offices o on o.id = r.office_id "
@@ -468,3 +471,25 @@ def mark_emitted(conn: psycopg.Connection, recommendation_id, office_id, path: s
 
 def report_path(office_id: str, case_id: str, recommendation_id: str) -> str:
     return f"{office_id}/{case_id}/reports/{recommendation_id}.pdf"
+
+
+# ---------------------------------------------------------------- empresa: CNAE (planejamento rápido)
+def get_company(conn: psycopg.Connection, company_id, office_id) -> dict[str, Any] | None:
+    return conn.execute("select id, office_id, cnpj from companies where id = %s and office_id = %s",
+                        (company_id, office_id)).fetchone()
+
+
+def save_company_cnae(conn: psycopg.Connection, company_id, office_id, data: dict) -> None:
+    """Grava só CNAE (principal, descrição, secundários); a razão social do cadastro não é sobrescrita."""
+    conn.execute(
+        "update companies set cnae_principal = %s, cnae_descricao = %s, cnaes_secundarios = %s, "
+        "cnae_origem = 'receita', cnae_atualizado_em = now(), cnae_consulta_status = 'ok', cnae_consulta_erro = null "
+        "where id = %s and office_id = %s",
+        (data["cnae_principal"], data.get("cnae_descricao"), Jsonb(data.get("cnaes_secundarios") or []),
+         company_id, office_id),
+    )
+
+
+def mark_company_lookup(conn: psycopg.Connection, company_id, office_id, status: str, error: str | None) -> None:
+    conn.execute("update companies set cnae_consulta_status = %s, cnae_consulta_erro = %s "
+                 "where id = %s and office_id = %s", (status, error, company_id, office_id))

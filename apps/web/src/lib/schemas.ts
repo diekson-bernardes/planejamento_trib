@@ -6,9 +6,19 @@ export const DOC_TYPES = [
   "DRE_ALTERDATA",
   "BALANCETE_ALTERDATA",
   "LIVRO_ICMS_ALTERDATA",
+  "DECLARACAO_FATURAMENTO",
 ] as const;
-/** Documentos exigidos por competência; o Livro de Apuração do ICMS é opcional (conciliação R7). */
-export const REQUIRED_DOC_TYPES = DOC_TYPES.filter((t) => t !== "LIVRO_ICMS_ALTERDATA");
+/** Documentos exigidos por competência no dossiê completo; Livro de Apuração (R7) e Declaração de Faturamento
+ *  (planejamento rápido) ficam fora. */
+export const REQUIRED_DOC_TYPES = DOC_TYPES.filter((t) => t !== "LIVRO_ICMS_ALTERDATA" && t !== "DECLARACAO_FATURAMENTO");
+export const CASE_KINDS = ["completo", "rapido"] as const;
+/** Campos da digitação manual do planejamento rápido, por documento (mesmas chaves da RPC enter_manual_values). */
+export const MANUAL_FIELDS = {
+  FATURAMENTO: ["faturamento.mes"],
+  FOLHA: ["folha.salarios", "folha.pro_labore", "folha.autonomos"],
+  DRE: ["dre.receita_bruta", "dre.outras_receitas", "dre.resultado"],
+} as const;
+export type ManualDoc = keyof typeof MANUAL_FIELDS;
 export const MAPPING_TARGETS = [
   "vendas",
   "simples_despesa",
@@ -48,11 +58,52 @@ export const createCaseSchema = z
     legalName: z.string().trim().optional(),
     periodStart: month,
     periodEnd: month,
+    kind: z.enum(CASE_KINDS).default("completo"),
   })
   .refine((v) => v.companyId || (v.cnpj && isValidCnpj(v.cnpj) && v.legalName), {
     message: "Selecione uma empresa ou informe CNPJ válido e razão social",
   })
-  .refine((v) => v.periodEnd >= v.periodStart, { message: "O fim do período deve ser após o início" });
+  .refine((v) => v.periodEnd >= v.periodStart, { message: "O fim do período deve ser após o início" })
+  .refine((v) => v.kind !== "rapido" || monthsSpan(v.periodStart, v.periodEnd) === 12, {
+    message: "O planejamento rápido usa os últimos 12 meses (ex.: 09/2025 a 08/2026)",
+  });
+
+function monthsSpan(start: string, end: string): number {
+  const [sy, sm] = start.split("-").map(Number);
+  const [ey, em] = end.split("-").map(Number);
+  return (ey - sy) * 12 + (em - sm) + 1;
+}
+
+/** "1.234,56", "1234.56" ou "-500,00" → número (o resultado da DRE pode ser negativo; demais campos não). */
+const money = z
+  .string()
+  .trim()
+  .transform((v) => normalizeDecimal(v))
+  .pipe(z.string().regex(/^-?\d+(\.\d{1,2})?$/, "Valor inválido"));
+
+export const manualValuesSchema = z
+  .object({
+    caseId: z.uuid(),
+    docType: z.enum(["FATURAMENTO", "FOLHA", "DRE"]),
+    competence: month,
+    values: z.record(z.string(), money),
+  })
+  .refine((v) => Object.keys(v.values).length > 0, { message: "Informe ao menos um valor" })
+  .refine((v) => Object.keys(v.values).every((k) => (MANUAL_FIELDS[v.docType] as readonly string[]).includes(k)), {
+    message: "Campo inválido para o documento",
+  })
+  .refine((v) => Object.entries(v.values).every(([k, x]) => k === "dre.resultado" || !x.startsWith("-")), {
+    message: "Só o resultado da DRE pode ser negativo",
+  });
+
+export const cnaeSchema = z.object({
+  companyId: z.uuid(),
+  cnae: z
+    .string()
+    .transform((v) => onlyDigits(v))
+    .pipe(z.string().length(7, "CNAE deve ter 7 dígitos (ex.: 4744-0/01)")),
+  description: z.string().trim().max(200).optional(),
+});
 
 export const registerUploadSchema = z.object({
   caseId: z.uuid(),

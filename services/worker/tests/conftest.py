@@ -30,6 +30,11 @@ EXTRA_SAMPLE_FILES = {
     "livro_202608": "Livro Apuração ICMS 08.pdf",       # opcional (ciclo 4): Registro de Apuração do ICMS
 }
 ALL_SAMPLE_FILES = {**SAMPLE_FILES, **EXTRA_SAMPLE_FILES}
+# ciclo 5 (planejamento rápido): Declaração de Faturamento — fora do dossiê completo dos goldens anteriores
+RAPIDO_SAMPLE_FILES = {"declaracao_202608": "RBT12.pdf"}
+SAMPLE_REGISTRY = {**ALL_SAMPLE_FILES, **RAPIDO_SAMPLE_FILES}
+RAPIDO_NAMES = ["declaracao_202608", "folha_202606", "folha_202607", "folha_202608", "dre_202606", "dre_202607",
+                "dre_202608"]
 SAMPLE_CNPJ = "37704456000142"
 
 DEFAULT_MAPPINGS = {
@@ -63,12 +68,12 @@ def samples_dir() -> Path:
 @pytest.fixture(scope="session")
 def sample():
     base = samples_dir()
-    missing = [n for n in ALL_SAMPLE_FILES.values() if not (base / n).is_file()]
+    missing = [n for n in SAMPLE_REGISTRY.values() if not (base / n).is_file()]
     if missing:
         skip_or_fail("amostras ausentes em " + str(base) + " (defina SAMPLES_DIR)")
 
     def load(name: str) -> bytes:
-        return (base / ALL_SAMPLE_FILES[name]).read_bytes()
+        return (base / SAMPLE_REGISTRY[name]).read_bytes()
 
     return load
 
@@ -81,7 +86,7 @@ def build_snapshot_content(load, names=None) -> dict:
     for name in names or SAMPLE_FILES:
         result, checks = parse_document(load(name))
         file_id = "file-" + name
-        files.append({"id": file_id, "original_name": ALL_SAMPLE_FILES[name], "doc_type": result.doc_type.value,
+        files.append({"id": file_id, "original_name": SAMPLE_REGISTRY[name], "doc_type": result.doc_type.value,
                       "competence": result.competence + "-01", "parser_version": result.parser_version})
         for v in result.values:
             values.append({
@@ -179,6 +184,60 @@ def reform_assumptions(view, rules, rules_2027, golden, reform_values: dict | No
     rows = [{"key": x.key, "scope": x.scope, "value": values.get(x.key, x.suggested_value)}
             for x in suggest(view, rules, None, rules_2027)]
     return Assumptions(rows)
+
+
+RAPIDO_COMPANY = {"cnae_principal": "4744001", "cnae_descricao": "Comércio varejista de ferragens e ferramentas",
+                  "cnaes_secundarios": [], "cnae_origem": "receita"}
+
+
+@pytest.fixture(scope="session")
+def rapido_content(sample):
+    """Snapshot de dossiê rápido: Declaração de Faturamento (09/2025–08/2026) + folha e DRE de 06–08/2026."""
+    content = build_snapshot_content(sample, RAPIDO_NAMES)
+    content["case"] = {"kind": "rapido"}
+    content["company"].update(RAPIDO_COMPANY)
+    content["manual_values"] = []
+    return content
+
+
+@pytest.fixture(scope="session")
+def cnae_table():
+    from worker.config import cnae_table_path, load_settings
+    from worker.engine.cnae import load_cnae_table
+
+    return load_cnae_table(cnae_table_path(load_settings()))
+
+
+@pytest.fixture(scope="session")
+def rapido_credits(snapshot_content_06_08, rules, rules_2027, golden):
+    """Compras creditáveis de 06–08/2026 do dossiê completo da mesma empresa (Livro/balancete), usadas como a base de
+    créditos que o analista informaria no dossiê rápido."""
+    from worker.engine.snapshot import SnapshotView
+
+    view = SnapshotView(snapshot_content_06_08)
+    a = reform_assumptions(view, rules, rules_2027, golden)
+    return {r["scope"].removeprefix("competencia:"): r["value"] for r in a.rows if r["key"] == "reforma.creditos_base"}
+
+
+def rapido_assumptions(content, rules, rules_2027, cnae_table, golden, credits: dict | None = None,
+                       overrides: dict | None = None, reform_values: dict | None = REFORM_GOLDEN):
+    """Sugestões do dossiê rápido aceitas + declarações do golden + premissas de 2027 (+ créditos e sobrescritas)."""
+    from worker.engine.assumptions import Assumptions, suggest
+    from worker.engine.quick_view import build_quick_case, rapido_suggestions
+
+    qc = build_quick_case(content)
+    sug = rapido_suggestions(content, qc, suggest(qc.view, rules, None, rules_2027), rules, cnae_table)
+    values = {**golden("motor_202606_08")["assumption_overrides"], **(reform_values or {})}
+    rows = []
+    for x in sug:
+        value = values.get(x.key, x.suggested_value)
+        if x.key == "reforma.creditos_base" and credits is not None:
+            value = credits.get(x.scope.removeprefix("competencia:"), value)
+        rows.append({"key": x.key, "scope": x.scope, "value": value, "suggested_value": x.suggested_value})
+    by = {(r["key"], r["scope"]): r for r in rows}
+    for (key, scope), value in (overrides or {}).items():
+        by[(key, scope)] = {**by.get((key, scope), {"key": key, "scope": scope, "suggested_value": None}), "value": value}
+    return Assumptions(list(by.values()))
 
 
 @pytest.fixture(scope="session")

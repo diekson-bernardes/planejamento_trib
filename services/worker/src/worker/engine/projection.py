@@ -214,7 +214,7 @@ def build_projection(view: SnapshotView, confirmed: Assumptions, params: Decisio
         rba = sum((timeline[m] for m in months if m < comp), ZERO)
         prev12 = previous_months(comp, 12)
         rbt12 = sum((timeline.get(m, ZERO) for m in prev12), ZERO)
-        values += _synthetic_month(comp, origins[comp], plan[comp], templates, rba, rbaa, rbt12,
+        values += synthetic_month(comp, origins[comp], plan[comp], templates, rba, rbaa, rbt12,
                                    {m: timeline[m] for m in timeline if m < comp and m >= f"{year - 1:04d}-01"})
         files += [{"id": f"proj-{doc}-{comp}", "original_name": f"projecao {doc} {comp}", "doc_type": doc,
                    "competence": comp + "-01", "parser_version": "projecao-" + params.version} for doc in DOCS]
@@ -288,7 +288,7 @@ def shift_year(pc: ProjectedCase, params: DecisionParams, growth: Decimal, lever
         rba = sum((timeline[x] for x in months if x < m), ZERO)
         rbt12 = sum((timeline.get(x, ZERO) for x in previous_months(m, 12)), ZERO)
         prior = {x: timeline[x] for x in timeline if f"{pc.year:04d}-01" <= x < m}
-        values += _synthetic_month(m, PROJETADO, plan[m], pc.templates, rba, rbaa, rbt12, prior)
+        values += synthetic_month(m, PROJETADO, plan[m], pc.templates, rba, rbaa, rbt12, prior)
         files += [{"id": f"proj-{doc}-{m}", "original_name": f"projecao {doc} {m}", "doc_type": doc,
                    "competence": m + "-01", "parser_version": "projecao-" + params.version} for doc in DOCS]
 
@@ -343,7 +343,7 @@ def _v(comp: str, origin: str, doc: str, ordinal: int, section: str, field_key: 
     }
 
 
-def _synthetic_month(comp: str, origin: str, f: MonthFacts, templates: dict, rba: Decimal, rbaa: Decimal,
+def synthetic_month(comp: str, origin: str, f: MonthFacts, templates: dict, rba: Decimal, rbaa: Decimal,
                      rbt12: Decimal, prior: dict) -> list[dict]:
     out, n = [], 0
 

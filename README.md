@@ -82,6 +82,26 @@ tributárias. Golden: `services/worker/tests/golden/decisao_2026.json` (aprovado
 - Fora deste ciclo: mix de vendas (B2B × consumidor final), transição 2029–2033, Imposto Seletivo, ZFM, alíquotas por
   NCM, split payment e a opção semestral do híbrido.
 
+## Planejamento rápido (ciclo 5)
+
+Dossiê do tipo **planejamento rápido** (escolhido na criação, período de 12 meses) para comparar, em 2027, o
+**Simples por dentro**, o **Simples por fora (híbrido)** e o **Lucro Presumido** sem PGDAS-D nem balancete:
+
+- **Entrada**: Declaração de Faturamento em PDF (parser do layout da amostra `RBT12.pdf`: 12 meses + Total Geral), folha
+  e DRE Alterdata (1 a 12 meses) ou **digitação** dos meses sem PDF (`enter_manual_values`, com autor e data; mês com
+  PDF só muda por ajuste justificado). Sem conciliação R1–R7.
+- **CNAE**: "Consultar CNAE na Receita" enfileira o job `lookup_company`, que chama a automação n8n (servidor MCP,
+  ferramenta `Consultar_CNPJ`) em `CNPJ_LOOKUP_MCP_URL`; só CNAE e descrições são gravados (sócios descartados). Se a
+  consulta falhar, o CNAE é digitado.
+- **Homologação** exige 12 meses consecutivos de faturamento, ao menos um mês de folha e um de DRE, validações da
+  declaração aprovadas e o CNAE principal.
+- **Premissas**: perfil da atividade sugerido pela tabela `services/worker/rules/cnae_anexos.json` (versão/hash próprios,
+  `verificado: false`), parcelas com ICMS-ST e monofásico, ICMS no regime normal (proxy do DAS), base de créditos de
+  CBS/IBS (**sem sugestão**: informar as compras) e as premissas de 2027 do ciclo 4.
+- **Projetar 2027**: o snapshot rápido vira conteúdo no formato do dossiê completo (`engine/quick_view.py`) e segue pelo
+  motor do ciclo 4 sem Lucro Real; tela e PDF mostram a **faixa do Simples** por mês (anexo, faixa, nominal, dedução e
+  efetiva) e o PDF identifica "planejamento rápido", o CNAE e a origem dos dados (PDF × digitado).
+
 ## Pré-requisitos
 
 - Node.js 20+ e npm
@@ -101,7 +121,8 @@ npm run db:start
 
 1. Rode `npx supabase status` e copie `API_URL`, `ANON_KEY` e `SERVICE_ROLE_KEY`.
 2. Crie `apps/web/.env.local` com `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` (modelo em `.env.example`).
-3. Para o worker, exporte `DATABASE_URL`, `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`.
+3. Para o worker, exporte `DATABASE_URL`, `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (e, para consultar o CNAE,
+   `CNPJ_LOOKUP_MCP_URL` com o endereço da automação n8n; sem ela, o CNAE é digitado).
 
 Usuários do seed (senha `senha-local-123`): `admin.a@example.com` (admin do Escritório A),
 `analista.a@example.com` (analista do A), `analista.b@example.com` (analista do B).

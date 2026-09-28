@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { homologateCase, reclassifyFile, requestXlsx } from "@/app/(app)/cases/actions";
+import { CompanyCnae, type CompanyCnaeRow } from "@/components/CompanyCnae";
+import { ManualValuesForm, type ManualValueRow } from "@/components/ManualValuesForm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UploadDropzone } from "@/components/UploadDropzone";
-import { DOC_TYPE_LABEL, formatCnpj, formatCompetence, formatDateTime, monthsBetween } from "@/lib/format";
+import { CASE_KIND_LABEL, DOC_TYPE_LABEL, formatCnpj, formatCompetence, formatDateTime, monthsBetween } from "@/lib/format";
 import { DOC_TYPES, REQUIRED_DOC_TYPES } from "@/lib/schemas";
 import { getSessionContext } from "@/lib/supabase/server";
 
@@ -23,11 +25,12 @@ export default async function CasePage({
 
   const { data: tc } = await supabase
     .from("tax_cases")
-    .select("id, office_id, period_start, period_end, status, companies(legal_name, cnpj)")
+    .select("id, office_id, period_start, period_end, status, kind, companies(id, legal_name, cnpj, cnae_principal, cnae_descricao, cnaes_secundarios, cnae_origem, cnae_atualizado_em, cnae_consulta_status, cnae_consulta_erro)")
     .eq("id", id)
     .maybeSingle();
   if (!tc) notFound();
-  const company = tc.companies as { legal_name: string; cnpj: string } | null;
+  const company = tc.companies as ({ legal_name: string; cnpj: string } & CompanyCnaeRow) | null;
+  const rapido = tc.kind === "rapido";
 
   const [{ data: files }, { data: failing }, { data: recs }, { data: snapshot }, { data: exportJobs }] = await Promise.all([
     supabase
@@ -48,13 +51,33 @@ export default async function CasePage({
   const missingSource = (recs ?? []).filter((r) => r.status === "missing_source").length;
 
   const extracted = (files ?? []).filter((f) => f.status === "extracted");
-  const missingCompetences = monthsBetween(tc.period_start, tc.period_end).flatMap((m) =>
+  const months = monthsBetween(tc.period_start, tc.period_end);
+  // planejamento rápido: meses com PDF por documento, valores digitados e bloqueios da homologação
+  let manual: ManualValueRow[] = [];
+  let rapidoBlockers: string[] = [];
+  const pdfMonths: Record<string, string[]> = {};
+  if (rapido) {
+    const [{ data: mv }, { data: decl }, blockers] = await Promise.all([
+      supabase.from("manual_values").select("doc_type, competence, field_key, value").eq("case_id", id),
+      supabase.from("extracted_values").select("competence").eq("case_id", id)
+        .eq("doc_type", "DECLARACAO_FATURAMENTO").eq("field_key", "faturamento.mes"),
+      homologated ? Promise.resolve({ data: [] as string[] }) : supabase.rpc("rapido_blockers", { p_case_id: id }),
+    ]);
+    manual = (mv ?? []) as ManualValueRow[];
+    rapidoBlockers = (blockers.data ?? []) as string[];
+    pdfMonths.DECLARACAO_FATURAMENTO = (decl ?? []).map((d) => d.competence.slice(0, 7));
+    for (const doc of ["FOLHA_ALTERDATA", "DRE_ALTERDATA"]) {
+      pdfMonths[doc] = extracted.filter((f) => f.doc_type === doc && f.competence).map((f) => f.competence!.slice(0, 7));
+    }
+  }
+  const missingCompetences = rapido ? [] : months.flatMap((m) =>
     REQUIRED_DOC_TYPES.filter((t) => !extracted.some((f) => f.doc_type === t && f.competence?.startsWith(m))).map(
       (t) => `${DOC_TYPE_LABEL[t]} ${formatCompetence(m)}`,
     ),
   );
 
-  const canHomologate = !homologated && (files?.length ?? 0) > 0 && blockingFiles.length === 0 && unjustified === 0;
+  const canHomologate = !homologated && ((files?.length ?? 0) > 0 || manual.length > 0) && blockingFiles.length === 0
+    && unjustified === 0 && rapidoBlockers.length === 0;
 
   let xlsxReady = false;
   if (snapshot) {
@@ -71,12 +94,13 @@ export default async function CasePage({
           <h1 className="mt-1">{company?.legal_name}</h1>
           <p className="text-sm text-slate-600">
             {company ? formatCnpj(company.cnpj) : ""} · {formatCompetence(tc.period_start)} a {formatCompetence(tc.period_end)}
+            {" "}· {CASE_KIND_LABEL[tc.kind] ?? tc.kind}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <StatusBadge status={tc.status} />
           <Link href={`/cases/${id}/review`} className="btn-secondary">Revisar valores</Link>
-          <Link href={`/cases/${id}/reconciliation`} className="btn-secondary">Conciliação</Link>
+          {!rapido && <Link href={`/cases/${id}/reconciliation`} className="btn-secondary">Conciliação</Link>}
           {homologated && (
             <Link href={`/cases/${id}/planning`} className="btn-primary">Planejamento</Link>
           )}
@@ -141,9 +165,17 @@ export default async function CasePage({
         )}
       </section>
 
+      {rapido && company && <CompanyCnae caseId={id} company={company} readOnly={homologated} />}
+      {rapido && (
+        <ManualValuesForm caseId={id} months={months} pdfMonths={pdfMonths} manual={manual} readOnly={homologated} />
+      )}
+
       <section className="card space-y-3" aria-labelledby="pend-title">
         <h2 id="pend-title">Pendências</h2>
         <ul className="space-y-2 text-sm">
+          {rapidoBlockers.map((b) => (
+            <li key={b} className="alert-error">{b} — bloqueia a homologação.</li>
+          ))}
           {blockingFiles.length > 0 && (
             <li className="alert-error">{blockingFiles.length} arquivo(s) ainda não extraído(s) com sucesso — bloqueia a homologação.</li>
           )}
@@ -166,7 +198,8 @@ export default async function CasePage({
           {missingSource > 0 && (
             <li className="alert-warning">{missingSource} regra(s) de conciliação sem fonte suficiente (não bloqueia).</li>
           )}
-          {!processing && blockingFiles.length === 0 && unjustified === 0 && (failing?.length ?? 0) === 0 && missingCompetences.length === 0 && (
+          {!processing && blockingFiles.length === 0 && unjustified === 0 && (failing?.length ?? 0) === 0 && missingCompetences.length === 0
+            && rapidoBlockers.length === 0 && (
             <li className="alert-success">Nenhuma pendência.</li>
           )}
         </ul>

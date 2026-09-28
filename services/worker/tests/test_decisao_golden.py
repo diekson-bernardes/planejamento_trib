@@ -56,3 +56,36 @@ def test_projection_2027_matches_approved_golden(snapshot_content_06_08, rules, 
         d, expected = s.as_dict(), g["sensibilidade"][s.key]
         assert {"virada_x": d["virada_x"], "virada_valor": d["virada_valor"], "novo_lider": s.new_leader,
                 "robustez": s.robustness, "limite_juridico_x": d["limite_juridico_x"]} == expected, s.key
+
+
+def test_rapido_2027_matches_approved_golden(rapido_content, rules, rules_2027, decision_params, decision_params_2027,
+                                             cnae_table, golden):
+    """Ciclo 5: o planejamento rápido da amostra (declaração + folha/DRE 06–08) reproduz exatamente o golden aprovado."""
+    from conftest import rapido_assumptions
+    from worker.engine.quick_view import REGIMES, build_quick_case
+
+    g = golden("rapido_2027")
+    assert g["approved_by"] and g["approved_at"]
+    assert rules_2027.version == g["rules_version"] and decision_params_2027.version == g["decision_version"]
+    assert rapido_content["company"]["cnae_principal"] == g["cnae"]
+    a = rapido_assumptions(rapido_content, rules, rules_2027, cnae_table, golden, g["credits"],
+                           reform_values=g["reform_values"])
+    qc = build_quick_case(rapido_content, a)
+    res = project(qc.view, qc.assumptions, rules_2027, decision_params_2027, Decimal(g["threshold"]),
+                  base_params=decision_params, regimes=REGIMES)
+    assert res.projected.base["receita_anual"] == g["receita_anual"]
+    assert res.simulation.ranking == g["ranking"]
+    for regime, expected in g["regimes"].items():
+        got = res.simulation.regimes[regime]
+        assert str(got.total) == expected["total"], regime
+        assert {k: str(v) for k, v in sorted(got.by_tax.items())} == expected["by_tax"], regime
+        assert {p: str(v) for p, v in sorted(got.by_period.items())} == expected["by_period"], regime
+    rec = res.recommendation.as_dict()
+    assert {k: rec[k] for k in g["recomendacao"]} == g["recomendacao"]
+    faixas = [{"mes": l.period, "faixa": l.origin["faixa"], "efetiva": l.origin["efetiva"]}
+              for l in res.simulation.lines if l.tax == "faixa" and l.regime == "SIMPLES"]
+    assert faixas == g["faixas"]
+    for s in res.sensitivity:
+        d, expected = s.as_dict(), g["sensibilidade"][s.key]
+        assert {"virada_x": d["virada_x"], "virada_valor": d["virada_valor"], "novo_lider": s.new_leader,
+                "robustez": s.robustness, "limite_juridico_x": d["limite_juridico_x"]} == expected, s.key

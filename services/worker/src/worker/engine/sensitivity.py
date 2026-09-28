@@ -95,16 +95,18 @@ def _base_value(var: Variable, base: ProjectedCase) -> Decimal | None:
 
 
 def run_sensitivity(view: SnapshotView, confirmed: Assumptions, rules: RuleSet, params: DecisionParams,
-                    base: ProjectedCase, base_ranking: list, builder=None) -> list[SensitivityResult]:
+                    base: ProjectedCase, base_ranking: list, builder=None,
+                    regimes: tuple | None = None) -> list[SensitivityResult]:
     """`builder(levers) -> ProjectedCase` monta a projeção do exercício (padrão: `build_projection` do ano base)."""
     builder = builder or (lambda levers: build_projection(view, confirmed, params, levers))
     out = []
     for var in params.variables:
-        out.append(_one(var, builder, rules, params, base, base_ranking))
+        out.append(_one(var, builder, rules, params, base, base_ranking, regimes))
     return out
 
 
-def _one(var: Variable, builder, rules, params, base: ProjectedCase, base_ranking: list) -> SensitivityResult:
+def _one(var: Variable, builder, rules, params, base: ProjectedCase, base_ranking: list,
+         regimes: tuple | None = None) -> SensitivityResult:
     cache: dict = {}
 
     def at(x: Decimal) -> Point | None:
@@ -112,7 +114,7 @@ def _one(var: Variable, builder, rules, params, base: ProjectedCase, base_rankin
         if x not in cache:
             try:
                 pc = builder(_levers(var, x))
-                sim = calculate(SnapshotView(pc.content), Assumptions(pc.assumptions), rules)
+                sim = calculate(SnapshotView(pc.content), Assumptions(pc.assumptions), rules, regimes)
                 cache[x] = Point(x, tuple(sim.ranking), {r: v.total for r, v in sim.regimes.items()})
             except ProjectionError:
                 cache[x] = None

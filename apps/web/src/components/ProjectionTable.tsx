@@ -1,6 +1,8 @@
 import { formatBRL, MONTH_ORIGIN, REGIME_LABEL, TAX_LABEL } from "@/lib/format";
 
-export type ProjectionLine = { regime: string; period: string; tax: string; kind: string; amount: string | number };
+export type ProjectionLine = {
+  regime: string; period: string; tax: string; kind: string; amount: string | number; origin?: Record<string, unknown> | null;
+};
 
 const MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
 const TAX_ORDER = ["irpj", "adicional_irpj", "csll", "cofins", "pis", "cbs", "ibs", "cpp", "rat", "terceiros", "icms", "iss", "ipi"];
