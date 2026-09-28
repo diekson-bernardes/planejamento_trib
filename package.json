@@ -14,7 +14,7 @@
     "db:reset": "npx supabase db reset",
     "db:types": "npx supabase gen types typescript --local > apps/web/src/lib/database.types.ts",
     "dev:web": "npm run dev --workspace apps/web",
-    "dev:worker": "python -m worker.main"
+    "dev:worker": "node scripts/dev-worker.mjs"
   },
   "devDependencies": {
     "supabase": "2.117.0"

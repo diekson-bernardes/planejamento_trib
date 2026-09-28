@@ -7,6 +7,22 @@ from pydantic import BaseModel, Field
 
 # services/worker/rules (repositório); na imagem Docker, RULES_DIR=/app/rules
 DEFAULT_RULES_DIR = Path(__file__).resolve().parents[2] / "rules"
+# .env na raiz do repositório (desenvolvimento local; fora do Git). Na imagem Docker não existe: só variáveis do container.
+REPO_ENV_FILE = Path(__file__).resolve().parents[4] / ".env"
+
+
+def load_env_file(path: Path = REPO_ENV_FILE) -> None:
+    """Carrega CHAVE=valor do arquivo sem sobrescrever variáveis já definidas (o ambiente sempre prevalece)."""
+    if not path.is_file():
+        return
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
 
 
 class Settings(BaseModel):
@@ -20,6 +36,8 @@ class Settings(BaseModel):
     rules_dir: str = str(DEFAULT_RULES_DIR)
     rules_exercise: str = "2026"
     decision_params: str = str(DEFAULT_RULES_DIR / "decisao.json")
+    cnpj_lookup_url: str = ""          # automação n8n (MCP); vazio = consulta desativada, CNAE só digitado
+    cnpj_lookup_timeout: float = Field(default=20.0, gt=0)
 
 
 def decision_params_path(settings: "Settings", year: int) -> str:
@@ -30,6 +48,7 @@ def decision_params_path(settings: "Settings", year: int) -> str:
 
 
 def load_settings() -> Settings:
+    load_env_file()
     return Settings(
         database_url=os.environ.get(
             "DATABASE_URL", "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
@@ -45,4 +64,10 @@ def load_settings() -> Settings:
         decision_params=os.environ.get(
             "DECISION_PARAMS", os.path.join(os.environ.get("RULES_DIR", str(DEFAULT_RULES_DIR)), "decisao.json")
         ),
+        cnpj_lookup_url=os.environ.get("CNPJ_LOOKUP_MCP_URL", ""),
+        cnpj_lookup_timeout=float(os.environ.get("CNPJ_LOOKUP_TIMEOUT", "20")),
     )
+
+
+def cnae_table_path(settings: Settings) -> str:
+    return os.path.join(settings.rules_dir, "cnae_anexos.json")

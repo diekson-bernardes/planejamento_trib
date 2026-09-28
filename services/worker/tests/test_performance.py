@@ -17,7 +17,7 @@ def test_six_pdfs_ready_for_review_within_limit(db_conn, tenant, sample, golden)
     for name in SAMPLE_FILES:
         tenant.add_file(sample(name), name + ".pdf")
     started = time.monotonic()
-    Pipeline(db_conn, tenant.storage).drain()
+    Pipeline(db_conn, tenant.storage, office_id=tenant.office_id).drain()
     elapsed = time.monotonic() - started
 
     case = db_conn.execute("select status from tax_cases where id = %s", (tenant.case_id,)).fetchone()

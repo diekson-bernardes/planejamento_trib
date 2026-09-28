@@ -1,9 +1,11 @@
 """Classificação determinística por âncoras de cabeçalho da página 1."""
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 
 from worker.errors import Unclassified
 from worker.models import DocType, Row
+import re
+
 from worker.pdf.numbers import DATE, normalize_cnpj, parse_date
 
 # (tipo, âncoras que precisam aparecer todas na página 1, âncora da linha do período)
@@ -13,7 +15,9 @@ ANCHORS: list[tuple[DocType, tuple[str, ...], str]] = [
     (DocType.DRE_ALTERDATA, ("Demonstração do Resultado do Exercício",), "Demonstração do Resultado"),
     (DocType.BALANCETE_ALTERDATA, ("Balancete Analítico",), "Balancete Analítico"),
     (DocType.LIVRO_ICMS_ALTERDATA, ("R E G I S T R O D E A P U R A Ç Ã O D O I C M S",), "Mês ou Período/Ano"),
+    (DocType.DECLARACAO_FATURAMENTO, ("DECLARAÇÃO DE FATURAMENTO",), "Período:"),
 ]
+MONTH = re.compile(r"(?<![\d/])(\d\d)/(\d\d\d\d)(?![\d/])")
 
 
 @dataclass(frozen=True)
@@ -69,6 +73,12 @@ def classify(rows: list[Row], forced: DocType | None = None) -> Classification:
             if len(dates) >= 2:
                 start = parse_date("/".join(dates[0]))
                 end = parse_date("/".join(dates[1]))
+            else:   # "Período: 09/2025 a 08/2026" (Declaração de Faturamento)
+                months = MONTH.findall(r.text)
+                if len(months) >= 2:
+                    start = date(int(months[0][1]), int(months[0][0]), 1)
+                    y, m = int(months[1][1]), int(months[1][0])
+                    end = date(y + m // 12, m % 12 + 1, 1) - timedelta(days=1)
             break
 
     return Classification(doc_type=doc_type, cnpj=cnpj, period_start=start, period_end=end)

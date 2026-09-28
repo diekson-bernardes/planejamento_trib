@@ -1,0 +1,665 @@
+{
+  "versao": "2026.1.0",
+  "dominio": "cnae_anexos",
+  "fonte": "LC 123/2006 (art. 3º § 4º, art. 17, art. 18 §§ 4º a 5º-J) e Resolução CGSN 140/2018, lidas via fontes secundárias em 2026-09-26; texto oficial não conferido",
+  "verificado": false,
+  "regra": "casamento pelo prefixo mais longo dos 7 dígitos do CNAE; sem prefixo = sem sugestão (analista escolhe o anexo)",
+  "entradas": [
+    {
+      "prefixo": "05",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria extrativa"
+    },
+    {
+      "prefixo": "06",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Extração de petróleo e gás"
+    },
+    {
+      "prefixo": "07",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Extração de minerais metálicos"
+    },
+    {
+      "prefixo": "08",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Extração de minerais não metálicos"
+    },
+    {
+      "prefixo": "10",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "11",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "1111",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Bebidas destiladas: vedado, salvo produtores artesanais (art. 17, X, b)"
+    },
+    {
+      "prefixo": "1112",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Vinho: vedado, salvo pequenas vinícolas (art. 17, X, b)"
+    },
+    {
+      "prefixo": "1113",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Cervejas e chopes: vedado, salvo micro e pequenas cervejarias (art. 17, X, b)"
+    },
+    {
+      "prefixo": "12",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Fumo e cigarros: vedado (art. 17, X, a)"
+    },
+    {
+      "prefixo": "13",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "14",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "15",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "16",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "17",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "18",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "19",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "20",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "20924",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Explosivos e pólvoras: vedado (art. 17, X, a)"
+    },
+    {
+      "prefixo": "21",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "22",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "23",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "24",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "25",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "2550",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Armas de fogo e munições: vedado (art. 17, X, a)"
+    },
+    {
+      "prefixo": "26",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "27",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "28",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "29",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "30",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "31",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "32",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "33",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Indústria de transformação"
+    },
+    {
+      "prefixo": "351",
+      "anexo": "II",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Geração, transmissão ou distribuição de energia elétrica: vedado (art. 17, VII)"
+    },
+    {
+      "prefixo": "41",
+      "anexo": "IV",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Construção de edifícios: Anexo IV (CPP fora do DAS); presunção 8% se houver emprego de materiais"
+    },
+    {
+      "prefixo": "42",
+      "anexo": "IV",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Obras de infraestrutura: Anexo IV; presunção 8% se houver emprego de materiais"
+    },
+    {
+      "prefixo": "43",
+      "anexo": "IV",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Serviços especializados para construção: Anexo IV"
+    },
+    {
+      "prefixo": "45",
+      "anexo": "I",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Comércio e reparação de veículos (revenda)"
+    },
+    {
+      "prefixo": "4520",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Manutenção e reparação de veículos (serviço): Anexo III"
+    },
+    {
+      "prefixo": "4543",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Manutenção e reparação de motocicletas (serviço): Anexo III"
+    },
+    {
+      "prefixo": "46",
+      "anexo": "I",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Comércio atacadista"
+    },
+    {
+      "prefixo": "46354",
+      "anexo": "I",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Atacado de bebidas: vedado para bebidas alcoólicas (art. 17, X, b)"
+    },
+    {
+      "prefixo": "4635401",
+      "anexo": "I",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Atacado de água mineral"
+    },
+    {
+      "prefixo": "4636202",
+      "anexo": "I",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Atacado de cigarros e charutos: vedado (art. 17, X, a)"
+    },
+    {
+      "prefixo": "4681",
+      "anexo": "I",
+      "presumido": "revenda_combustiveis",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Comércio atacadista de combustíveis"
+    },
+    {
+      "prefixo": "47",
+      "anexo": "I",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Comércio varejista"
+    },
+    {
+      "prefixo": "4731",
+      "anexo": "I",
+      "presumido": "revenda_combustiveis",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Comércio varejista de combustíveis"
+    },
+    {
+      "prefixo": "4921",
+      "anexo": "III",
+      "presumido": "transporte_passageiros",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Transporte rodoviário municipal de passageiros: Anexo III"
+    },
+    {
+      "prefixo": "4922",
+      "anexo": "III",
+      "presumido": "transporte_passageiros",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Transporte intermunicipal/interestadual de passageiros: Anexo III (com ICMS)"
+    },
+    {
+      "prefixo": "4929",
+      "anexo": "III",
+      "presumido": "transporte_passageiros",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Fretamento e turismo: Anexo III"
+    },
+    {
+      "prefixo": "4930",
+      "anexo": "III",
+      "presumido": "transporte_cargas",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Transporte rodoviário de cargas: Anexo III (com ICMS se intermunicipal)"
+    },
+    {
+      "prefixo": "55",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Hospedagem: Anexo III"
+    },
+    {
+      "prefixo": "56",
+      "anexo": "I",
+      "presumido": "comercio_industria",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Restaurantes e similares: fornecimento de alimentação tributado no Anexo I (verificar)"
+    },
+    {
+      "prefixo": "62",
+      "anexo": "V",
+      "presumido": "servicos_gerais",
+      "fator_r": true,
+      "vedado": false,
+      "nota": "Tecnologia da informação: Anexo V, Anexo III se Fator R ≥ 28% (art. 18, § 5º-I e § 5º-J)"
+    },
+    {
+      "prefixo": "631",
+      "anexo": "V",
+      "presumido": "servicos_gerais",
+      "fator_r": true,
+      "vedado": false,
+      "nota": "Tratamento de dados e portais: Anexo V com Fator R"
+    },
+    {
+      "prefixo": "64",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Atividades financeiras: vedado a bancos e congêneres (art. 3º, § 4º, VIII)"
+    },
+    {
+      "prefixo": "6491",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Factoring: vedado (art. 17, I)"
+    },
+    {
+      "prefixo": "6622",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Corretores e agentes de seguros: Anexo III"
+    },
+    {
+      "prefixo": "6810",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Compra, venda e locação de imóveis próprios: locação de imóveis próprios vedada (art. 17, XV)"
+    },
+    {
+      "prefixo": "6821",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Corretagem e administração de imóveis: Anexo III"
+    },
+    {
+      "prefixo": "6822",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Gestão e administração da propriedade imobiliária: Anexo III"
+    },
+    {
+      "prefixo": "6911",
+      "anexo": "IV",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Advocacia: Anexo IV (art. 18, § 5º-C, VII)"
+    },
+    {
+      "prefixo": "6920",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Contabilidade: Anexo III (art. 18, § 5º-B, XIV)"
+    },
+    {
+      "prefixo": "70",
+      "anexo": "V",
+      "presumido": "servicos_gerais",
+      "fator_r": true,
+      "vedado": false,
+      "nota": "Consultoria e gestão empresarial: Anexo V com Fator R"
+    },
+    {
+      "prefixo": "71",
+      "anexo": "V",
+      "presumido": "servicos_gerais",
+      "fator_r": true,
+      "vedado": false,
+      "nota": "Arquitetura, engenharia e testes técnicos: Anexo V com Fator R"
+    },
+    {
+      "prefixo": "73",
+      "anexo": "V",
+      "presumido": "servicos_gerais",
+      "fator_r": true,
+      "vedado": false,
+      "nota": "Publicidade e pesquisa de mercado: Anexo V com Fator R"
+    },
+    {
+      "prefixo": "74",
+      "anexo": "V",
+      "presumido": "servicos_gerais",
+      "fator_r": true,
+      "vedado": false,
+      "nota": "Design, fotografia e outras atividades técnicas: Anexo V com Fator R"
+    },
+    {
+      "prefixo": "75",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Atividades veterinárias: Anexo III"
+    },
+    {
+      "prefixo": "77",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Locação de bens móveis: Anexo III"
+    },
+    {
+      "prefixo": "7820",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Locação de mão de obra temporária: vedado (art. 17, XII)"
+    },
+    {
+      "prefixo": "7830",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": true,
+      "nota": "Fornecimento e gestão de recursos humanos: vedado (art. 17, XII)"
+    },
+    {
+      "prefixo": "80",
+      "anexo": "IV",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Vigilância e segurança: Anexo IV (art. 18, § 5º-C, VI)"
+    },
+    {
+      "prefixo": "8121",
+      "anexo": "IV",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Limpeza em prédios: Anexo IV (art. 18, § 5º-C, VI)"
+    },
+    {
+      "prefixo": "8122",
+      "anexo": "IV",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Imunização e controle de pragas: Anexo IV"
+    },
+    {
+      "prefixo": "8129",
+      "anexo": "IV",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Outras atividades de limpeza: Anexo IV"
+    },
+    {
+      "prefixo": "813",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Paisagismo: Anexo III"
+    },
+    {
+      "prefixo": "85",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Educação: Anexo III (verificar ensino com Fator R)"
+    },
+    {
+      "prefixo": "86",
+      "anexo": "V",
+      "presumido": "servicos_gerais",
+      "fator_r": true,
+      "vedado": false,
+      "nota": "Atividades de atenção à saúde humana: Anexo V com Fator R"
+    },
+    {
+      "prefixo": "8610",
+      "anexo": "III",
+      "presumido": "servicos_hospitalares",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Atendimento hospitalar: Anexo III; presunção hospitalar exige requisitos legais"
+    },
+    {
+      "prefixo": "93",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Atividades esportivas e de recreação: Anexo III"
+    },
+    {
+      "prefixo": "95",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Reparação e manutenção: Anexo III"
+    },
+    {
+      "prefixo": "96",
+      "anexo": "III",
+      "presumido": "servicos_gerais",
+      "fator_r": false,
+      "vedado": false,
+      "nota": "Serviços pessoais: Anexo III"
+    }
+  ]
+}

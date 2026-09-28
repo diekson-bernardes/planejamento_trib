@@ -29,7 +29,7 @@ def prepare(db_conn, tenant, sample):
                         (tenant.office_id, tenant.user_id, tenant.office_id, ADMIN))
     for name in ALL_SAMPLE_FILES:
         tenant.add_file(sample(name), name + ".pdf")
-    pipe = Pipeline(db_conn, tenant.storage)
+    pipe = Pipeline(db_conn, tenant.storage, office_id=tenant.office_id)
     pipe.drain()
     # 06 e 07/2026 têm divergência real em R5 (salários a pagar): o analista justifica, como na tela
     as_user(db_conn, tenant.user_id, "update reconciliations set justification = 'Divergência conferida no teste' "

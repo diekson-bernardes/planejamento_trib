@@ -7,15 +7,19 @@ import time
 from functools import lru_cache
 from typing import Any
 
+import httpx
 import psycopg
 
 from worker import db
 from worker.classify import classify
 from worker.errors import (
     CnpjMismatch, HashMismatch, HasAdjustments, LayoutNotRecognized, NoTextLayer, NotPdf,
-    Unclassified, WorkerError,
+    TransientError, Unclassified, WorkerError,
 )
-from worker.config import decision_params_path, load_settings
+from worker.cnpj_lookup import LookupError_, consultar_cnpj
+from worker.config import cnae_table_path, decision_params_path, load_settings
+from worker.engine.cnae import CnaeTable, load_cnae_table
+from worker.engine.quick_view import REGIMES as RAPIDO_REGIMES, QuickCaseError, build_quick_case, is_rapido, rapido_suggestions
 from worker.engine.assumptions import REFORM_GROUP, Assumptions, assumptions_hash, suggest
 from worker.engine.calculate import NoCompleteCompetence, calculate
 from worker.engine.decision import project
@@ -80,6 +84,11 @@ def default_decision_params() -> DecisionParams:
     return load_decision_params(load_settings().decision_params)
 
 
+@lru_cache(maxsize=1)
+def default_cnae_table() -> CnaeTable:
+    return load_cnae_table(cnae_table_path(load_settings()))
+
+
 @lru_cache(maxsize=8)
 def rules_for(year: int) -> RuleSet | None:
     """Regras de outro exercício (ex.: 2027, Reforma); None quando a pasta não existe."""
@@ -105,8 +114,9 @@ def blocking(rows: list[dict], year: int) -> list[dict]:
 
 class Pipeline:
     def __init__(self, conn: psycopg.Connection, storage: Storage, rules: RuleSet | None = None,
-                 decision: DecisionParams | None = None):
+                 decision: DecisionParams | None = None, office_id=None):
         self.conn = conn
+        self.office_id = office_id      # None = todos os escritórios (worker); testes restringem ao próprio tenant
         self.storage = storage
         self.rules = rules or default_rules()
         self.decision = decision or default_decision_params()
@@ -129,6 +139,10 @@ class Pipeline:
             return self.project(job)
         if kind == "emit_report":
             return self.emit_report(job)
+        if kind == "lookup_company":
+            return self.lookup_company(job)
+        if kind == "purge_storage":
+            return self.purge_storage(job)
         raise ValueError("tipo de job desconhecido: " + kind)
 
     # ------------------------------------------------------------------ extract
@@ -189,6 +203,8 @@ class Pipeline:
         case = db.get_case(self.conn, job["payload"]["case_id"], office_id)
         if case is None or case["status"] == "homologated":
             return "dossiê homologado ou inexistente"
+        if case.get("kind") == "rapido":
+            return "planejamento rápido: sem conciliação R1–R7"
         facts = Facts(db.load_facts(self.conn, case["id"], office_id))
         mappings = db.load_mappings(self.conn, office_id, case["company_id"])
         tolerance = db.load_tolerance(self.conn, office_id)
@@ -219,8 +235,17 @@ class Pipeline:
         if snap is None:
             return "dossiê não homologado"
         current = [r for r in db.load_assumptions(self.conn, case_id, office_id) if r["status"] == "confirmed"]
-        rows = [s.as_row() for s in suggest(SnapshotView(snap["content"]), self.rules, Assumptions(current),
-                                            rules_for(REFORM_YEAR))]
+        content = snap["content"]
+        if is_rapido(content):
+            try:
+                qc = build_quick_case(content, Assumptions(current))
+            except QuickCaseError as exc:
+                return str(exc)
+            base = suggest(qc.view, self.rules, Assumptions(current), rules_for(REFORM_YEAR))
+            rows = [s.as_row() for s in rapido_suggestions(content, qc, base, self.rules, default_cnae_table())]
+        else:
+            rows = [s.as_row() for s in suggest(SnapshotView(content), self.rules, Assumptions(current),
+                                                rules_for(REFORM_YEAR))]
         db.upsert_suggestions(self.conn, case_id, office_id, rows)
         log("suggest.generated", job_id=job["id"], case_id=case_id, office_id=office_id, assumptions=len(rows),
             rules_version=self.rules.version)
@@ -234,6 +259,8 @@ class Pipeline:
         snap = db.get_case_snapshot(self.conn, case_id, office_id)
         if snap is None:
             return "dossiê não homologado"
+        if is_rapido(snap["content"]):
+            return "planejamento rápido compara só 2027 (Projetar 2027)"
         rows = db.load_assumptions(self.conn, case_id, office_id)
         pending = blocking(rows, self.rules.exercise)
         if pending:   # premissa voltou a pendente depois do pedido (ex.: sugestões regeneradas)
@@ -318,10 +345,13 @@ class Pipeline:
                       assumptions_hash=a_hash, rules_version=rules.version, rules_hash=rules.hash,
                       decision_version=decision.version, decision_hash=decision.hash, threshold=threshold,
                       assumptions=used, requested_by=job["payload"].get("requested_by"))
-        view = SnapshotView(snap["content"])
+        view, confirmed, only = SnapshotView(snap["content"]), Assumptions(used), None
         try:
-            res = project(view, Assumptions(used), rules, decision, threshold, blockers, self.decision)
-        except (ProjectionError, NoCompleteCompetence) as exc:
+            if is_rapido(snap["content"]):     # snapshot rápido → conteúdo no formato do dossiê completo
+                qc = build_quick_case(snap["content"], confirmed)
+                view, confirmed, only = qc.view, qc.assumptions, RAPIDO_REGIMES
+            res = project(view, confirmed, rules, decision, threshold, blockers, self.decision, only)
+        except (ProjectionError, NoCompleteCompetence, QuickCaseError) as exc:
             code = getattr(exc, "code", "PROJECTION_BLOCKED")
             db.save_projection(self.conn, **common, year=0, status="failed", result={}, sensitivity=[],
                                recommendation={}, result_hash=None, lines=[], engine_runs=None,
@@ -337,6 +367,46 @@ class Pipeline:
         log("projection.blocked" if rec["status"] == "bloqueado" else "projection.done", job_id=job["id"],
             case_id=case_id, office_id=office_id, projection_id=proj_id, status=rec["status"], regime=rec["regime"],
             engine_runs=res.runs, duration_ms=int((time.monotonic() - started) * 1000))
+        return None
+
+    # ------------------------------------------------------------------ limpeza do Storage (exclusão/reabertura)
+    def purge_storage(self, job: dict[str, Any]) -> str | None:
+        """Apaga os objetos do dossiê excluído, do arquivo excluído ou os PDFs/exportações de um dossiê reaberto.
+        Só aceita caminhos do próprio escritório e dossiê do job."""
+        office_id = str(job["office_id"])
+        payload = job["payload"]
+        root = f"{office_id}/{payload['case_id']}/"
+        paths = [p for p in payload.get("paths", []) if p.startswith(root)]
+        for prefix in payload.get("prefixes", []):
+            if prefix.startswith(root):
+                paths += self.storage.list_prefix(prefix)
+        if paths:
+            self.storage.delete(sorted(set(paths)))
+        log("storage.purged", job_id=job["id"], office_id=office_id, case_id=payload["case_id"], objects=len(set(paths)))
+        return None
+
+    # ------------------------------------------------------------------ CNAE (planejamento rápido)
+    def lookup_company(self, job: dict[str, Any]) -> str | None:
+        office_id = job["office_id"]
+        company_id = job["payload"]["company_id"]
+        company = db.get_company(self.conn, company_id, office_id)
+        if company is None:
+            return "empresa inexistente"
+        settings = load_settings()
+        if not settings.cnpj_lookup_url:
+            db.mark_company_lookup(self.conn, company_id, office_id, "falhou", "consulta de CNAE não configurada — informe o CNAE")
+            return "CNPJ_LOOKUP_MCP_URL ausente"
+        try:
+            data = consultar_cnpj(settings.cnpj_lookup_url, company["cnpj"], settings.cnpj_lookup_timeout)
+        except LookupError_ as exc:
+            if isinstance(exc.__cause__, httpx.HTTPError) or str(exc).startswith("HTTP 5"):
+                raise TransientError("consulta de CNPJ indisponível") from exc    # retry da fila
+            db.mark_company_lookup(self.conn, company_id, office_id, "falhou", str(exc)[:200])
+            log("company.lookup_failed", job_id=job["id"], company_id=company_id, office_id=office_id)
+            return str(exc)
+        db.save_company_cnae(self.conn, company_id, office_id, data)
+        log("company.lookup_done", job_id=job["id"], company_id=company_id, office_id=office_id,
+            cnae=data["cnae_principal"])
         return None
 
     def emit_report(self, job: dict[str, Any]) -> str | None:
@@ -359,7 +429,7 @@ class Pipeline:
     # ------------------------------------------------------------------ loop
     def run_once(self, lease_seconds: int, max_attempts: int) -> bool:
         """Processa um job. Devolve False quando a fila está vazia."""
-        job = db.claim_job(self.conn, lease_seconds)
+        job = db.claim_job(self.conn, lease_seconds, self.office_id)
         if job is None:
             return False
         try:
@@ -373,6 +443,9 @@ class Pipeline:
                                            max_attempts, code + ": " + type(exc).__name__)
             log("job.retry" if retried else "job.failed", job_id=job["id"], kind=job["kind"],
                 office_id=job["office_id"], attempts=job["attempts"], code=code)
+            if not retried and job["kind"] == "lookup_company":
+                db.mark_company_lookup(self.conn, job["payload"]["company_id"], job["office_id"], "falhou",
+                                       "automação de consulta indisponível — informe o CNAE")
             if not retried and job["kind"] == "extract":
                 db.set_file_status(self.conn, job["payload"]["file_id"], job["office_id"], "failed",
                                    error_code=code, error_message="falha após " + str(job["attempts"]) + " tentativas")

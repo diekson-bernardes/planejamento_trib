@@ -20,7 +20,7 @@ def value_count(conn, file_id):
 def test_extraction_is_idempotent(db_conn, tenant, sample):
     data = sample("pgdas_202608")
     file_id = tenant.add_file(data, "pgdas.pdf")
-    pipe = Pipeline(db_conn, tenant.storage)
+    pipe = Pipeline(db_conn, tenant.storage, office_id=tenant.office_id)
     pipe.drain()
 
     first = file_row(db_conn, file_id)
@@ -65,7 +65,7 @@ def test_cnpj_mismatch_blocks_file(db_conn, sample):
     t = TenantFixture(db_conn, cnpj="11222333000181")
     try:
         file_id = t.add_file(sample("folha_202608"), "folha.pdf")
-        Pipeline(db_conn, t.storage).drain()
+        Pipeline(db_conn, t.storage, office_id=t.office_id).drain()
         row = file_row(db_conn, file_id)
         assert row["status"] == "cnpj_mismatch"
         assert row["error_code"] == "CNPJ_MISMATCH"
@@ -76,7 +76,7 @@ def test_cnpj_mismatch_blocks_file(db_conn, sample):
 
 def test_pdf_without_text_is_rejected_without_values(db_conn, tenant):
     file_id = tenant.add_file(minimal_pdf(None), "escaneado.pdf")
-    Pipeline(db_conn, tenant.storage).drain()
+    Pipeline(db_conn, tenant.storage, office_id=tenant.office_id).drain()
     row = file_row(db_conn, file_id)
     assert row["status"] == "rejected"
     assert row["error_code"] == "NO_TEXT"
@@ -85,7 +85,7 @@ def test_pdf_without_text_is_rejected_without_values(db_conn, tenant):
 
 def test_unknown_document_is_unclassified(db_conn, tenant):
     file_id = tenant.add_file(minimal_pdf("Documento qualquer"), "outro.pdf")
-    Pipeline(db_conn, tenant.storage).drain()
+    Pipeline(db_conn, tenant.storage, office_id=tenant.office_id).drain()
     assert file_row(db_conn, file_id)["status"] == "unclassified"
 
 
@@ -96,7 +96,7 @@ def test_layout_change_fails_with_parser_version(db_conn, tenant, sample):
     with db_conn.transaction():
         db_conn.execute("update jobs set payload = payload || '{\"manual_doc_type\": \"BALANCETE_ALTERDATA\"}' "
                         "where payload ->> 'file_id' = %s::text", (file_id,))
-    Pipeline(db_conn, tenant.storage).drain()
+    Pipeline(db_conn, tenant.storage, office_id=tenant.office_id).drain()
     row = file_row(db_conn, file_id)
     assert row["status"] == "failed"
     assert row["error_code"] == "LAYOUT"
@@ -107,7 +107,7 @@ def test_layout_change_fails_with_parser_version(db_conn, tenant, sample):
 @pytest.mark.samples
 def test_file_with_adjustments_is_not_reprocessed(db_conn, tenant, sample):
     file_id = tenant.add_file(sample("dre_202608"), "dre.pdf")
-    pipe = Pipeline(db_conn, tenant.storage)
+    pipe = Pipeline(db_conn, tenant.storage, office_id=tenant.office_id)
     pipe.drain()
     with db_conn.transaction():
         vid = db_conn.execute("select id from extracted_values where file_id = %s order by ordinal limit 1",
@@ -128,9 +128,23 @@ def test_file_with_adjustments_is_not_reprocessed(db_conn, tenant, sample):
 
 def test_corrupt_pdf_is_rejected_without_retry(db_conn, tenant):
     file_id = tenant.add_file(b"%PDF-1.4\n\x00\x01 lixo sem estrutura", "corrompido.pdf")
-    Pipeline(db_conn, tenant.storage).drain()
+    Pipeline(db_conn, tenant.storage, office_id=tenant.office_id).drain()
     row = file_row(db_conn, file_id)
     assert (row["status"], row["error_code"]) == ("rejected", "NOT_PDF")
     attempts = db_conn.execute("select attempts from jobs where payload ->> 'file_id' = %s::text",
                                (file_id,)).fetchone()["attempts"]
     assert attempts == 1
+
+
+def test_pipeline_with_office_filter_leaves_other_offices_jobs(db_conn, tenant):
+    """Os testes (office_id do tenant) não consomem jobs de outros escritórios — ex.: os do usuário no banco local."""
+    other = TenantFixture(db_conn)
+    try:
+        other_file = other.add_file(minimal_pdf("outro escritorio"), "outro.pdf")
+        tenant.add_file(minimal_pdf(None), "meu.pdf")
+        Pipeline(db_conn, tenant.storage, office_id=tenant.office_id).drain()
+        assert file_row(db_conn, other_file)["status"] == "uploaded"
+        job = db_conn.execute("select status from jobs where payload ->> 'file_id' = %s", (str(other_file),)).fetchone()
+        assert job["status"] == "queued"
+    finally:
+        other.cleanup()

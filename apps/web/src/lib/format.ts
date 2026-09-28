@@ -28,7 +28,29 @@ export const DOC_TYPE_LABEL: Record<string, string> = {
   DRE_ALTERDATA: "DRE (Alterdata)",
   BALANCETE_ALTERDATA: "Balancete (Alterdata)",
   LIVRO_ICMS_ALTERDATA: "Livro de Apuração do ICMS (Alterdata)",
+  DECLARACAO_FATURAMENTO: "Declaração de Faturamento (12 meses)",
 };
+
+export const CASE_KIND_LABEL: Record<string, string> = {
+  completo: "Dossiê completo",
+  rapido: "Planejamento rápido (2027)",
+};
+
+export const MANUAL_FIELD_LABEL: Record<string, string> = {
+  "faturamento.mes": "Faturamento do mês",
+  "folha.salarios": "Salários dos empregados",
+  "folha.pro_labore": "Pró-labore",
+  "folha.autonomos": "Autônomos",
+  "dre.receita_bruta": "Receita bruta",
+  "dre.outras_receitas": "Outras receitas",
+  "dre.resultado": "Resultado do mês (lucro ou prejuízo)",
+};
+
+/** "4744001" → "4744-0/01" */
+export function formatCnae(value: string | null | undefined): string {
+  const d = (value ?? "").replace(/\D/g, "");
+  return d.length === 7 ? `${d.slice(0, 4)}-${d[4]}/${d.slice(5)}` : value || "—";
+}
 
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger";
 
@@ -141,6 +163,7 @@ export const ASSUMPTION_GROUP_LABEL: Record<string, string> = {
   projecao: "Projeção do exercício (orçamento opcional)",
   conformidade: "Custo de conformidade (exibido à parte)",
   reforma_2027: "Reforma Tributária 2027 (só bloqueia a projeção de 2027)",
+  rapido: "Planejamento rápido (parcelas com ICMS-ST e monofásico)",
 };
 
 export const MONTH_ORIGIN: Record<string, { label: string; short: string }> = {

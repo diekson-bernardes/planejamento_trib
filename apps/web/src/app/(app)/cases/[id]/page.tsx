@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { homologateCase, reclassifyFile, requestXlsx } from "@/app/(app)/cases/actions";
+import { deleteCase, deleteSourceFile, homologateCase, reclassifyFile, reopenCase, requestXlsx, updateCase } from "@/app/(app)/cases/actions";
+import { CompanyCnae, type CompanyCnaeRow } from "@/components/CompanyCnae";
+import { ManualValuesForm, type ManualValueRow } from "@/components/ManualValuesForm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UploadDropzone } from "@/components/UploadDropzone";
-import { DOC_TYPE_LABEL, formatCnpj, formatCompetence, formatDateTime, monthsBetween } from "@/lib/format";
+import { CASE_KIND_LABEL, DOC_TYPE_LABEL, formatCnpj, formatCompetence, formatDateTime, monthsBetween } from "@/lib/format";
 import { DOC_TYPES, REQUIRED_DOC_TYPES } from "@/lib/schemas";
 import { getSessionContext } from "@/lib/supabase/server";
 
@@ -23,11 +25,12 @@ export default async function CasePage({
 
   const { data: tc } = await supabase
     .from("tax_cases")
-    .select("id, office_id, period_start, period_end, status, companies(legal_name, cnpj)")
+    .select("id, office_id, period_start, period_end, status, kind, companies(id, legal_name, cnpj, razao_social_pendente, cnae_principal, cnae_descricao, cnaes_secundarios, cnae_origem, cnae_atualizado_em, cnae_consulta_status, cnae_consulta_erro)")
     .eq("id", id)
     .maybeSingle();
   if (!tc) notFound();
-  const company = tc.companies as { legal_name: string; cnpj: string } | null;
+  const company = tc.companies as ({ legal_name: string; cnpj: string } & CompanyCnaeRow) | null;
+  const rapido = tc.kind === "rapido";
 
   const [{ data: files }, { data: failing }, { data: recs }, { data: snapshot }, { data: exportJobs }] = await Promise.all([
     supabase
@@ -48,13 +51,36 @@ export default async function CasePage({
   const missingSource = (recs ?? []).filter((r) => r.status === "missing_source").length;
 
   const extracted = (files ?? []).filter((f) => f.status === "extracted");
-  const missingCompetences = monthsBetween(tc.period_start, tc.period_end).flatMap((m) =>
+  const months = monthsBetween(tc.period_start, tc.period_end);
+  // planejamento rápido: meses com PDF por documento, valores digitados e bloqueios da homologação
+  let manual: ManualValueRow[] = [];
+  let rapidoBlockers: string[] = [];
+  const pdfMonths: Record<string, string[]> = {};
+  if (!homologated) {
+    // bloqueios além de arquivos/conciliação: razão social pendente (todos) e regras do rápido
+    const { data: blockers } = await supabase.rpc("rapido_blockers", { p_case_id: id });
+    rapidoBlockers = (blockers ?? []) as string[];
+  }
+  if (rapido) {
+    const [{ data: mv }, { data: decl }] = await Promise.all([
+      supabase.from("manual_values").select("doc_type, competence, field_key, value").eq("case_id", id),
+      supabase.from("extracted_values").select("competence").eq("case_id", id)
+        .eq("doc_type", "DECLARACAO_FATURAMENTO").eq("field_key", "faturamento.mes"),
+    ]);
+    manual = (mv ?? []) as ManualValueRow[];
+    pdfMonths.DECLARACAO_FATURAMENTO = (decl ?? []).map((d) => d.competence.slice(0, 7));
+    for (const doc of ["FOLHA_ALTERDATA", "DRE_ALTERDATA"]) {
+      pdfMonths[doc] = extracted.filter((f) => f.doc_type === doc && f.competence).map((f) => f.competence!.slice(0, 7));
+    }
+  }
+  const missingCompetences = rapido ? [] : months.flatMap((m) =>
     REQUIRED_DOC_TYPES.filter((t) => !extracted.some((f) => f.doc_type === t && f.competence?.startsWith(m))).map(
       (t) => `${DOC_TYPE_LABEL[t]} ${formatCompetence(m)}`,
     ),
   );
 
-  const canHomologate = !homologated && (files?.length ?? 0) > 0 && blockingFiles.length === 0 && unjustified === 0;
+  const canHomologate = !homologated && ((files?.length ?? 0) > 0 || manual.length > 0) && blockingFiles.length === 0
+    && unjustified === 0 && rapidoBlockers.length === 0;
 
   let xlsxReady = false;
   if (snapshot) {
@@ -71,12 +97,13 @@ export default async function CasePage({
           <h1 className="mt-1">{company?.legal_name}</h1>
           <p className="text-sm text-slate-600">
             {company ? formatCnpj(company.cnpj) : ""} · {formatCompetence(tc.period_start)} a {formatCompetence(tc.period_end)}
+            {" "}· {CASE_KIND_LABEL[tc.kind] ?? tc.kind}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <StatusBadge status={tc.status} />
           <Link href={`/cases/${id}/review`} className="btn-secondary">Revisar valores</Link>
-          <Link href={`/cases/${id}/reconciliation`} className="btn-secondary">Conciliação</Link>
+          {!rapido && <Link href={`/cases/${id}/reconciliation`} className="btn-secondary">Conciliação</Link>}
           {homologated && (
             <Link href={`/cases/${id}/planning`} className="btn-primary">Planejamento</Link>
           )}
@@ -116,6 +143,13 @@ export default async function CasePage({
                         {fileFails.length > 0 && (
                           <span className="block text-amber-800">{fileFails.length} validação(ões) interna(s) falharam</span>
                         )}
+                        {!homologated && (
+                          <form action={deleteSourceFile} className="mt-1">
+                            <input type="hidden" name="caseId" value={id} />
+                            <input type="hidden" name="fileId" value={f.id} />
+                            <button type="submit" className="text-xs text-red-700 underline">Excluir arquivo</button>
+                          </form>
+                        )}
                         {f.status === "unclassified" && !homologated && (
                           <form action={reclassifyFile} className="mt-1 flex items-center gap-2">
                             <input type="hidden" name="caseId" value={id} />
@@ -141,9 +175,17 @@ export default async function CasePage({
         )}
       </section>
 
+      {company && <CompanyCnae caseId={id} company={company} readOnly={homologated} cnaeRequired={rapido} />}
+      {rapido && (
+        <ManualValuesForm caseId={id} months={months} pdfMonths={pdfMonths} manual={manual} readOnly={homologated} />
+      )}
+
       <section className="card space-y-3" aria-labelledby="pend-title">
         <h2 id="pend-title">Pendências</h2>
         <ul className="space-y-2 text-sm">
+          {rapidoBlockers.map((b) => (
+            <li key={b} className="alert-error">{b} — bloqueia a homologação.</li>
+          ))}
           {blockingFiles.length > 0 && (
             <li className="alert-error">{blockingFiles.length} arquivo(s) ainda não extraído(s) com sucesso — bloqueia a homologação.</li>
           )}
@@ -166,7 +208,8 @@ export default async function CasePage({
           {missingSource > 0 && (
             <li className="alert-warning">{missingSource} regra(s) de conciliação sem fonte suficiente (não bloqueia).</li>
           )}
-          {!processing && blockingFiles.length === 0 && unjustified === 0 && (failing?.length ?? 0) === 0 && missingCompetences.length === 0 && (
+          {!processing && blockingFiles.length === 0 && unjustified === 0 && (failing?.length ?? 0) === 0 && missingCompetences.length === 0
+            && rapidoBlockers.length === 0 && (
             <li className="alert-success">Nenhuma pendência.</li>
           )}
         </ul>
@@ -204,6 +247,61 @@ export default async function CasePage({
             <button className="btn-primary" type="submit" disabled={!canHomologate}>Homologar dossiê</button>
           </form>
         )}
+      </section>
+
+      {!homologated && (
+        <section className="card space-y-3" aria-labelledby="edit-title">
+          <h2 id="edit-title">Dados do dossiê</h2>
+          <form action={updateCase} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="caseId" value={id} />
+            <div>
+              <label className="label" htmlFor="e-start">Competência inicial</label>
+              <input id="e-start" name="periodStart" type="month" className="input" required defaultValue={tc.period_start.slice(0, 7)} />
+            </div>
+            <div>
+              <label className="label" htmlFor="e-end">Competência final</label>
+              <input id="e-end" name="periodEnd" type="month" className="input" required defaultValue={tc.period_end.slice(0, 7)} />
+            </div>
+            <div>
+              <label className="label" htmlFor="e-kind">Tipo</label>
+              <select id="e-kind" name="kind" className="input" defaultValue={tc.kind}>
+                <option value="completo">{CASE_KIND_LABEL.completo}</option>
+                <option value="rapido">{CASE_KIND_LABEL.rapido}</option>
+              </select>
+            </div>
+            <button type="submit" className="btn-secondary">Salvar alterações</button>
+          </form>
+          <p className="text-xs text-slate-600">Ao passar para dossiê completo, os valores digitados do planejamento rápido são descartados.</p>
+        </section>
+      )}
+
+      <section className="card space-y-4 border-red-200" aria-labelledby="danger-title">
+        <h2 id="danger-title">Reabrir ou excluir</h2>
+        {homologated && (
+          <form action={reopenCase} className="space-y-2">
+            <input type="hidden" name="caseId" value={id} />
+            <p className="text-sm text-slate-600">
+              Reabrir descarta o snapshot, as simulações, as projeções e as recomendações (inclusive PDFs emitidos) e
+              libera o dossiê para edição. As premissas são mantidas. O motivo fica na auditoria.
+            </p>
+            <label className="label" htmlFor="reopen-reason">Motivo da reabertura</label>
+            <input id="reopen-reason" name="reason" className="input" required minLength={5} />
+            <button type="submit" className="btn-secondary">Reabrir dossiê</button>
+          </form>
+        )}
+        <form action={deleteCase} className="space-y-2">
+          <input type="hidden" name="caseId" value={id} />
+          <p className="text-sm text-slate-600">
+            Excluir apaga o dossiê com arquivos, valores, premissas, projeções, recomendações e PDFs. Não pode ser desfeito;
+            o registro da exclusão e o motivo ficam na auditoria.
+          </p>
+          <label className="label" htmlFor="delete-reason">Motivo da exclusão</label>
+          <input id="delete-reason" name="reason" className="input" required minLength={5} />
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="confirm" required /> Confirmo a exclusão definitiva deste dossiê
+          </label>
+          <button type="submit" className="btn-danger">Excluir dossiê</button>
+        </form>
       </section>
     </div>
   );

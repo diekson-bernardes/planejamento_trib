@@ -12,6 +12,7 @@ class DocType(StrEnum):
     DRE_ALTERDATA = "DRE_ALTERDATA"
     BALANCETE_ALTERDATA = "BALANCETE_ALTERDATA"
     LIVRO_ICMS_ALTERDATA = "LIVRO_ICMS_ALTERDATA"     # opcional: não entra na definição de competência completa
+    DECLARACAO_FATURAMENTO = "DECLARACAO_FATURAMENTO"  # planejamento rápido: faturamento dos últimos 12 meses
 
 
 @dataclass(frozen=True)

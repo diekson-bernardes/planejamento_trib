@@ -4,6 +4,7 @@ from worker.parsers.balancete_alterdata import BalanceteAlterdataParser
 from worker.parsers.base import Parser
 from worker.parsers.dre_alterdata import DreAlterdataParser
 from worker.parsers.folha_alterdata import FolhaAlterdataParser
+from worker.parsers.declaracao_faturamento import DeclaracaoFaturamentoParser
 from worker.parsers.livro_icms_alterdata import LivroIcmsAlterdataParser
 from worker.parsers.pgdas import PgdasParser
 
@@ -13,6 +14,7 @@ PARSERS: dict[DocType, Parser] = {
     DocType.DRE_ALTERDATA: DreAlterdataParser(),
     DocType.BALANCETE_ALTERDATA: BalanceteAlterdataParser(),
     DocType.LIVRO_ICMS_ALTERDATA: LivroIcmsAlterdataParser(),
+    DocType.DECLARACAO_FATURAMENTO: DeclaracaoFaturamentoParser(),
 }
 
 

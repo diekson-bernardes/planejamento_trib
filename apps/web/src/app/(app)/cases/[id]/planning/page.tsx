@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ASSUMPTION_GROUP_LABEL, formatBRL, formatCompetence, formatDateTime, formatPct, REGIME_LABEL } from "@/lib/format";
 import { getSessionContext } from "@/lib/supabase/server";
 
-const GROUP_ORDER = ["atividades", "elegibilidade", "icms_iss", "receitas", "pis_cofins", "real", "folha", "projecao", "conformidade", "reforma_2027"];
+const GROUP_ORDER = ["atividades", "rapido", "elegibilidade", "icms_iss", "receitas", "pis_cofins", "real", "folha", "projecao", "conformidade", "reforma_2027"];
 
 type SimulationSummary = {
   competences?: string[];
@@ -30,11 +30,12 @@ export default async function PlanningPage({
 
   const { data: tc } = await supabase
     .from("tax_cases")
-    .select("id, status, period_start, period_end, companies(legal_name)")
+    .select("id, status, period_start, period_end, kind, companies(legal_name)")
     .eq("id", id)
     .maybeSingle();
   if (!tc) notFound();
   const company = tc.companies as { legal_name: string } | null;
+  const rapido = tc.kind === "rapido";   // planejamento rápido: só a projeção de 2027, sem simulação de 2026
 
   const [{ data: rows }, { data: sims }, { data: jobs }, { data: projections }] = await Promise.all([
     supabase
@@ -71,7 +72,9 @@ export default async function PlanningPage({
   const pending = assumptions.filter((a) => a.status !== "confirmed" && a.grp !== "reforma_2027").length;
   const pending2027 = assumptions.filter((a) => a.status !== "confirmed" && a.grp === "reforma_2027").length;
   const hasReform = assumptions.some((a) => a.grp === "reforma_2027");
-  const groups = GROUP_ORDER.map((g) => [g, assumptions.filter((a) => a.grp === g)] as const).filter(([, list]) => list.length);
+  // grupos fora da ordem conhecida vão ao fim (nenhuma premissa some da tela)
+  const order = [...GROUP_ORDER, ...new Set(assumptions.map((a) => a.grp).filter((g) => !GROUP_ORDER.includes(g)))];
+  const groups = order.map((g) => [g, assumptions.filter((a) => a.grp === g)] as const).filter(([, list]) => list.length);
 
   return (
     <div className="space-y-6">
@@ -79,7 +82,7 @@ export default async function PlanningPage({
         <Link href={`/cases/${id}`} className="text-sm text-slate-600 hover:underline">← Dossiê</Link>
         <h1 className="mt-1">Planejamento tributário — {company?.legal_name}</h1>
         <p className="text-sm text-slate-600">
-          Elegibilidade e cálculo de Simples, Presumido e Real sobre o snapshot homologado ({formatCompetence(tc.period_start)} a{" "}
+          {rapido ? "Planejamento rápido: Simples por dentro, Simples por fora e Lucro Presumido em 2027" : "Elegibilidade e cálculo de Simples, Presumido e Real"} sobre o snapshot homologado ({formatCompetence(tc.period_start)} a{" "}
           {formatCompetence(tc.period_end)}). O comparativo não é recomendação: o parecer exige revisão do responsável técnico.
         </p>
       </div>
@@ -117,12 +120,14 @@ export default async function PlanningPage({
                   </button>
                 </form>
               )}
-              <form action={requestCalculation}>
-                <input type="hidden" name="caseId" value={id} />
-                <button type="submit" className="btn-primary" disabled={pending > 0 || running}>
-                  {pending > 0 ? `Calcular (${pending} pendente${pending > 1 ? "s" : ""})` : "Calcular simulação"}
-                </button>
-              </form>
+              {!rapido && (
+                <form action={requestCalculation}>
+                  <input type="hidden" name="caseId" value={id} />
+                  <button type="submit" className="btn-primary" disabled={pending > 0 || running}>
+                    {pending > 0 ? `Calcular (${pending} pendente${pending > 1 ? "s" : ""})` : "Calcular simulação"}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
           {groups.map(([group, list]) => (
@@ -151,18 +156,22 @@ export default async function PlanningPage({
               </p>
             </div>
             <div className="flex gap-2">
-              <form action={requestProjection}>
-                <input type="hidden" name="caseId" value={id} />
-                <input type="hidden" name="year" value="2026" />
-                <button type="submit" className="btn-primary" disabled={!homologated || running}>Projetar 2026</button>
-              </form>
-              {hasReform && (
+              {!rapido && (
+                <form action={requestProjection}>
+                  <input type="hidden" name="caseId" value={id} />
+                  <input type="hidden" name="year" value="2026" />
+                  <button type="submit" className="btn-primary" disabled={!homologated || running}>Projetar 2026</button>
+                </form>
+              )}
+              {(hasReform || rapido) && (
                 <form action={requestProjection}>
                   <input type="hidden" name="caseId" value={id} />
                   <input type="hidden" name="year" value="2027" />
-                  <button type="submit" className="btn-secondary" disabled={!homologated || running}
-                    title={pending2027 > 0 ? "Premissas de 2027 pendentes: a projeção sai como prévia bloqueada" : undefined}>
-                    {pending2027 > 0 ? `Projetar 2027 (${pending2027} pendente${pending2027 > 1 ? "s" : ""})` : "Projetar 2027"}
+                  <button type="submit" className={rapido ? "btn-primary" : "btn-secondary"} disabled={!homologated || running}
+                    title={pending2027 + (rapido ? pending : 0) > 0 ? "Premissas pendentes: a projeção sai como prévia bloqueada" : undefined}>
+                    {pending2027 + (rapido ? pending : 0) > 0
+                      ? `Projetar 2027 (${pending2027 + (rapido ? pending : 0)} pendente${pending2027 + (rapido ? pending : 0) > 1 ? "s" : ""})`
+                      : "Projetar 2027"}
                   </button>
                 </form>
               )}
@@ -195,6 +204,7 @@ export default async function PlanningPage({
         </section>
       )}
 
+      {!rapido && (
       <section className="card space-y-3" aria-labelledby="sims-title">
         <h2 id="sims-title">Simulações</h2>
         {!sims?.length ? (
@@ -226,6 +236,7 @@ export default async function PlanningPage({
           </table>
         )}
       </section>
+      )}
     </div>
   );
 }

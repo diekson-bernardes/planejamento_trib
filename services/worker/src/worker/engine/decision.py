@@ -59,7 +59,8 @@ def _months(origins: dict, kind: str) -> str:
 
 
 def project(view: SnapshotView, confirmed: Assumptions, rules: RuleSet, params: DecisionParams,
-            threshold: Decimal, blockers: list | None = None, base_params: DecisionParams | None = None) -> ProjectionResult:
+            threshold: Decimal, blockers: list | None = None, base_params: DecisionParams | None = None,
+            regimes: tuple | None = None) -> ProjectionResult:
     """Projeção do exercício de `rules`. Se o exercício é posterior ao dos meses completos (ex.: 2027), a projeção do
     ano base (com `base_params`) é deslocada com o crescimento confirmado (`reforma.crescimento`).
 
@@ -77,8 +78,8 @@ def project(view: SnapshotView, confirmed: Assumptions, rules: RuleSet, params: 
         return shift_year(pc, params, growth, levers)
 
     base = builder()
-    sim = calculate(SnapshotView(base.content), Assumptions(base.assumptions), rules)
-    sens: list[SensitivityResult] = run_sensitivity(view, confirmed, rules, params, base, sim.ranking, builder)
+    sim = calculate(SnapshotView(base.content), Assumptions(base.assumptions), rules, regimes)
+    sens: list[SensitivityResult] = run_sensitivity(view, confirmed, rules, params, base, sim.ranking, builder, regimes)
     unverified = [DOMAIN_NOTE.get(d, d) for d, ok in sorted(rules.verified.items()) if not ok]
     caveats = []
     if unverified:

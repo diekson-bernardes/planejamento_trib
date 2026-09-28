@@ -40,6 +40,9 @@
 @utility btn-secondary {
   @apply btn border border-slate-300 bg-white text-slate-800 hover:bg-slate-100;
 }
+@utility btn-danger {
+  @apply btn bg-red-700 text-white hover:bg-red-800;
+}
 @utility input {
   @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-600 focus:outline-none;
 }

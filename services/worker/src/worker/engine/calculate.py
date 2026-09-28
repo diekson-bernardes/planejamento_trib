@@ -80,7 +80,8 @@ def _simples(comps, view, a, rules, hybrid: bool = False):
     return lines, alerts
 
 
-def calculate(view: SnapshotView, a: Assumptions, rules: RuleSet) -> SimulationResult:
+def calculate(view: SnapshotView, a: Assumptions, rules: RuleSet, only: tuple | None = None) -> SimulationResult:
+    """`only` restringe as alternativas (ex.: planejamento rápido sem Lucro Real); padrão = todas do exercício."""
     comps = view.complete_competences()
     if not comps:
         raise NoCompleteCompetence("nenhuma competência com PGDAS-D, folha, DRE e balancete homologados")
@@ -92,7 +93,9 @@ def calculate(view: SnapshotView, a: Assumptions, rules: RuleSet) -> SimulationR
     all_lines: list[Line] = []
     regimes: dict = {}
     alerts: list = []
-    regimes_list = regimes_for(rules)
+    regimes_list = tuple(r for r in regimes_for(rules) if only is None or r in only)
+    if only is not None:
+        eligibility = {r: e for r, e in eligibility.items() if r in regimes_list}
     for regime in regimes_list:
         rr = RegimeResult(regime)
         regimes[regime] = rr

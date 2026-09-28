@@ -18,6 +18,7 @@ Para executar, use `patterns/calcular-das-mensal.md`; para decidir se o Simples 
 | [concepts/aliquota-efetiva-e-reparticao.md](concepts/aliquota-efetiva-e-reparticao.md) | Fórmula da alíquota efetiva, RBT12, repartição por tributo e o caso da faixa 6 |
 | [concepts/fator-r-e-anexos.md](concepts/fator-r-e-anexos.md) | Como a atividade define o anexo e como o Fator R move serviços do Anexo V para o III |
 | [concepts/limites-sublimites-e-exclusao.md](concepts/limites-sublimites-e-exclusao.md) | Teto de R$ 4,8 mi, sublimite de R$ 3,6 mi, excesso de 20% e efeitos no tempo |
+| [concepts/cnae-e-anexo.md](concepts/cnae-e-anexo.md) | Tabela CNAE → anexo usada no planejamento rápido (sugestão, vedações, sem sugestão) |
 
 ## Receitas — para fazer
 

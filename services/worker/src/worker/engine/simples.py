@@ -116,6 +116,7 @@ def calculate_month(comp: str, view: SnapshotView, a: Assumptions, rules: RuleSe
                       "soma das receitas dos 12 meses anteriores (série 2.2 do PGDAS-D)" if rbt.source == "serie"
                       else "RBT12 declarado no PGDAS-D", rules.ref("simples", "rbt12"), kind="informativo", origin=rbt_origin))
     total_receita = sum((act.receita for act in activities), ZERO)
+    faixas: set = set()
     anexo_iv_receita = ZERO
     exempt = ZERO
     for act in activities:
@@ -144,6 +145,15 @@ def calculate_month(comp: str, view: SnapshotView, a: Assumptions, rules: RuleSe
             if hybrid:
                 zeroed |= {"cbs", "ibs"}    # híbrido: CBS/IBS fora do DAS
         rates, band, efetiva = band_rates(anexo, rbt.value, rules, zeroed, sub.in_effect)
+        if anexo not in faixas:     # faixa do anexo pelo RBT12 (informativa: fora dos totais)
+            faixas.add(anexo)
+            lines.append(Line(regime, comp, "faixa", money(rbt.value), efetiva, ZERO,
+                              f"Anexo {anexo}, {band.faixa}ª faixa: (RBT12 {brl(rbt.value)} × nominal {pct(band.nominal, 2)}"
+                              f" − dedução {brl(band.deduzir)}) ÷ RBT12 = efetiva {pct(efetiva)}",
+                              rules.ref("simples", "anexo_" + anexo, "faixa_" + str(band.faixa)), kind="informativo",
+                              origin={"anexo": anexo, "faixa": band.faixa, "rbt12": str(money(rbt.value)),
+                                      "nominal": str(band.nominal), "deducao": str(band.deduzir),
+                                      "efetiva": str(efetiva.quantize(D("0.000001")))}))
         for tax, rate, ref, formula, verified in rates:
             lines.append(Line(regime, comp, tax, act.receita, rate, money(act.receita * rate),
                               f"receita {brl(act.receita)} × ({formula})", ref, origin=act.origin,
