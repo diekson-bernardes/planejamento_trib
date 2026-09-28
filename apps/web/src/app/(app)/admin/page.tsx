@@ -5,6 +5,7 @@ import {
   updateTolerance,
   upsertMapping,
 } from "@/app/(app)/admin/actions";
+import { createOffice } from "@/app/(app)/cases/actions";
 import { DOC_TYPE_LABEL, formatBRL, formatPct } from "@/lib/format";
 import { MAPPING_TARGETS } from "@/lib/schemas";
 import { listUserEmails } from "@/lib/supabase/admin";
@@ -162,6 +163,21 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="card space-y-3" aria-labelledby="novo-escritorio">
+        <h2 id="novo-escritorio">Novo escritório</h2>
+        <p className="text-sm text-slate-600">
+          Cria outro escritório com você como administrador. A tolerância, o limiar e as contas-alvo padrão deste
+          escritório são copiados; membros, empresas e dossiês não. Depois, troque de escritório no topo da tela.
+        </p>
+        <form action={createOffice} className="flex flex-wrap items-end gap-2">
+          <div>
+            <label className="label" htmlFor="office-name">Nome do escritório</label>
+            <input id="office-name" name="name" className="input w-80" required minLength={3} />
+          </div>
+          <button type="submit" className="btn-primary">Criar escritório</button>
+        </form>
       </section>
     </div>
   );

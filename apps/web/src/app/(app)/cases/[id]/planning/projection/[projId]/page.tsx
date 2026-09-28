@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { ComparisonTable, type SimulationResultView } from "@/components/ComparisonTable";
 import { ProjectionTable, type ProjectionLine } from "@/components/ProjectionTable";
 import {
@@ -86,6 +87,10 @@ export default async function ProjectionPage({
       </div>
       {erro && <p role="alert" className="alert-error">{erro}</p>}
       {ok && <p role="status" className="alert-success">{ok}</p>}
+      <AutoRefresh
+        active={rec?.status === "aprovada" && events?.[events.length - 1]?.event === "emission_requested"}
+        label="Emitindo o PDF… a página atualiza sozinha."
+      />
       <p className="alert-warning">
         Comparação do exercício de {result.year} com as regras de {result.year}.{" "}
         {result.year >= 2027

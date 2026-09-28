@@ -3,6 +3,11 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
+-- fixture própria (desfeita no rollback): o teste não depende da empresa do seed, que pode ser excluída pela tela
+insert into public.companies (id, office_id, cnpj, legal_name)
+values ('c0000000-0000-4000-8000-00000000000a', 'a0000000-0000-4000-8000-000000000001', '11222333000181',
+        'Comércio Exemplo Ltda (fictícia)')
+on conflict do nothing;
 
 select plan(20);
 
