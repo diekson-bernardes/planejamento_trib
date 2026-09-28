@@ -140,6 +140,8 @@ class Pipeline:
             return self.emit_report(job)
         if kind == "lookup_company":
             return self.lookup_company(job)
+        if kind == "purge_storage":
+            return self.purge_storage(job)
         raise ValueError("tipo de job desconhecido: " + kind)
 
     # ------------------------------------------------------------------ extract
@@ -364,6 +366,22 @@ class Pipeline:
         log("projection.blocked" if rec["status"] == "bloqueado" else "projection.done", job_id=job["id"],
             case_id=case_id, office_id=office_id, projection_id=proj_id, status=rec["status"], regime=rec["regime"],
             engine_runs=res.runs, duration_ms=int((time.monotonic() - started) * 1000))
+        return None
+
+    # ------------------------------------------------------------------ limpeza do Storage (exclusão/reabertura)
+    def purge_storage(self, job: dict[str, Any]) -> str | None:
+        """Apaga os objetos do dossiê excluído, do arquivo excluído ou os PDFs/exportações de um dossiê reaberto.
+        Só aceita caminhos do próprio escritório e dossiê do job."""
+        office_id = str(job["office_id"])
+        payload = job["payload"]
+        root = f"{office_id}/{payload['case_id']}/"
+        paths = [p for p in payload.get("paths", []) if p.startswith(root)]
+        for prefix in payload.get("prefixes", []):
+            if prefix.startswith(root):
+                paths += self.storage.list_prefix(prefix)
+        if paths:
+            self.storage.delete(sorted(set(paths)))
+        log("storage.purged", job_id=job["id"], office_id=office_id, case_id=payload["case_id"], objects=len(set(paths)))
         return None
 
     # ------------------------------------------------------------------ CNAE (planejamento rápido)

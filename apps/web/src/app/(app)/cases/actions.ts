@@ -5,13 +5,17 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import type { TablesInsert } from "@/lib/database.types";
+import { formatCnpj } from "@/lib/format";
 import {
   adjustValueSchema,
   cnaeSchema,
+  companyNameSchema,
   createCaseSchema,
   MANUAL_FIELDS,
   type ManualDoc,
   manualValuesSchema,
+  reasonSchema,
+  updateCaseSchema,
   firstIssue,
   justifySchema,
   normalizeDecimal,
@@ -65,10 +69,17 @@ export async function createCase(formData: FormData) {
   const input = parsed.data;
 
   let companyId = input.companyId;
+  // sem razão social digitada: cadastra pelo CNPJ e busca a razão social (e o CNAE) na Receita pela automação
+  const lookupName = !companyId && !input.legalName;
   if (!companyId) {
     const { data, error } = await supabase
       .from("companies")
-      .insert({ office_id: office.office_id, cnpj: input.cnpj!, legal_name: input.legalName! })
+      .insert({
+        office_id: office.office_id,
+        cnpj: input.cnpj!,
+        legal_name: input.legalName || `CNPJ ${formatCnpj(input.cnpj!)}`,
+        razao_social_pendente: lookupName,
+      })
       .select("id")
       .single();
     if (error) {
@@ -91,6 +102,7 @@ export async function createCase(formData: FormData) {
     .select("id")
     .single();
   if (error) withError("/cases/new", error.message);
+  if (lookupName) await supabase.rpc("request_company_lookup", { p_company_id: companyId! });
   revalidatePath("/cases");
   redirect(`/cases/${created.id}`);
 }
@@ -276,4 +288,73 @@ export async function setCompanyCnae(formData: FormData) {
   if (error) withError(`/cases/${caseId}`, error.message);
   revalidatePath(`/cases/${caseId}`);
   redirect(`/cases/${caseId}?ok=${encodeURIComponent("CNAE gravado.")}`);
+}
+
+/* ------------------------------------------------------------------ gestão do dossiê */
+function done(path: string, message: string): never {
+  revalidatePath("/cases", "layout");
+  redirect(`${path}?ok=${encodeURIComponent(message)}`);
+}
+
+export async function updateCase(formData: FormData) {
+  const caseId = String(formData.get("caseId") ?? "");
+  const parsed = updateCaseSchema.safeParse({
+    caseId, periodStart: formData.get("periodStart"), periodEnd: formData.get("periodEnd"), kind: formData.get("kind"),
+  });
+  if (!parsed.success) withError(`/cases/${caseId}`, firstIssue(parsed.error));
+  const v = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_case", {
+    p_case_id: v.caseId, p_period_start: `${v.periodStart}-01`, p_period_end: `${v.periodEnd}-01`, p_kind: v.kind,
+  });
+  if (error) withError(`/cases/${caseId}`, error.message);
+  done(`/cases/${caseId}`, "Dossiê atualizado.");
+}
+
+export async function reopenCase(formData: FormData) {
+  const caseId = String(formData.get("caseId") ?? "");
+  const parsed = reasonSchema.safeParse({ caseId, reason: formData.get("reason") });
+  if (!parsed.success) withError(`/cases/${caseId}`, firstIssue(parsed.error));
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("reopen_case", { p_case_id: caseId, p_reason: parsed.data.reason });
+  if (error) withError(`/cases/${caseId}`, error.message);
+  done(`/cases/${caseId}`, "Dossiê reaberto: snapshot, projeções e recomendações foram descartados.");
+}
+
+export async function deleteCase(formData: FormData) {
+  const caseId = String(formData.get("caseId") ?? "");
+  const parsed = reasonSchema.safeParse({ caseId, reason: formData.get("reason") });
+  if (!parsed.success) withError(`/cases/${caseId}`, firstIssue(parsed.error));
+  if (formData.get("confirm") !== "on") withError(`/cases/${caseId}`, "Marque a confirmação para excluir o dossiê.");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_case", { p_case_id: caseId, p_reason: parsed.data.reason });
+  if (error) withError(`/cases/${caseId}`, error.message);
+  done("/cases", "Dossiê excluído.");
+}
+
+export async function deleteSourceFile(formData: FormData) {
+  const caseId = String(formData.get("caseId") ?? "");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_source_file", { p_file_id: String(formData.get("fileId") ?? "") });
+  if (error) withError(`/cases/${caseId}`, error.message);
+  done(`/cases/${caseId}`, "Arquivo excluído.");
+}
+
+export async function updateCompany(formData: FormData) {
+  const caseId = String(formData.get("caseId") ?? "");
+  const parsed = companyNameSchema.safeParse({ companyId: formData.get("companyId"), legalName: formData.get("legalName") });
+  if (!parsed.success) withError(`/cases/${caseId}`, firstIssue(parsed.error));
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_company", {
+    p_company_id: parsed.data.companyId, p_legal_name: parsed.data.legalName,
+  });
+  if (error) withError(`/cases/${caseId}`, error.message);
+  done(`/cases/${caseId}`, "Razão social atualizada.");
+}
+
+export async function deleteCompany(formData: FormData) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_company", { p_company_id: String(formData.get("companyId") ?? "") });
+  if (error) withError("/cases/new", error.message);
+  done("/cases/new", "Empresa excluída.");
 }

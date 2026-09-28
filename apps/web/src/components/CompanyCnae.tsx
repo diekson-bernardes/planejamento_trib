@@ -1,8 +1,10 @@
-import { requestCompanyLookup, setCompanyCnae } from "@/app/(app)/cases/actions";
+import { requestCompanyLookup, setCompanyCnae, updateCompany } from "@/app/(app)/cases/actions";
 import { formatCnae, formatDateTime } from "@/lib/format";
 
 export type CompanyCnaeRow = {
   id: string;
+  legal_name: string;
+  razao_social_pendente: boolean;
   cnae_principal: string | null;
   cnae_descricao: string | null;
   cnaes_secundarios: unknown;
@@ -12,15 +14,41 @@ export type CompanyCnaeRow = {
   cnae_consulta_erro: string | null;
 };
 
-/** CNAE da empresa: consulta à Receita (automação n8n, pelo worker) ou digitação quando a consulta falhar. */
-export function CompanyCnae({ caseId, company, readOnly }: { caseId: string; company: CompanyCnaeRow; readOnly: boolean }) {
+/** Empresa do dossiê: razão social (digitada ou vinda da consulta pelo CNPJ) e CNAE (consulta à Receita pela
+ *  automação n8n, no worker, ou digitação quando a consulta falhar). O CNAE é exigido só no planejamento rápido. */
+export function CompanyCnae({ caseId, company, readOnly, cnaeRequired }: {
+  caseId: string;
+  company: CompanyCnaeRow;
+  readOnly: boolean;
+  cnaeRequired: boolean;
+}) {
   const secundarios = Array.isArray(company.cnaes_secundarios)
     ? (company.cnaes_secundarios as { codigo: string; descricao?: string }[])
     : [];
   const pending = company.cnae_consulta_status === "pendente";
   return (
     <section className="card space-y-3" aria-labelledby="cnae-title">
-      <h2 id="cnae-title">CNAE da empresa</h2>
+      <h2 id="cnae-title">Empresa</h2>
+      {company.razao_social_pendente ? (
+        <p role="status" className="alert-warning">
+          Razão social pendente: {pending ? "consultando a Receita pelo CNPJ…" : "a consulta não trouxe a razão social — informe abaixo."}
+        </p>
+      ) : (
+        <p className="text-sm"><b>{company.legal_name}</b></p>
+      )}
+      {!readOnly && (
+        <form action={updateCompany} className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="caseId" value={caseId} />
+          <input type="hidden" name="companyId" value={company.id} />
+          <div>
+            <label className="label" htmlFor="legal-name">Razão social</label>
+            <input id="legal-name" name="legalName" className="input w-80" required
+              defaultValue={company.razao_social_pendente ? "" : company.legal_name} />
+          </div>
+          <button type="submit" className="btn-secondary">Gravar razão social</button>
+        </form>
+      )}
+      <h3 className="text-sm font-semibold">CNAE {cnaeRequired ? "(exigido no planejamento rápido)" : "(opcional)"}</h3>
       {company.cnae_principal ? (
         <div className="text-sm">
           <p>
@@ -37,7 +65,9 @@ export function CompanyCnae({ caseId, company, readOnly }: { caseId: string; com
           <p className="text-xs text-slate-600">O anexo do Simples é sugerido pelo CNAE principal e confirmado nas premissas.</p>
         </div>
       ) : (
-        <p className="text-sm text-slate-600">CNAE ainda não informado — a homologação exige o CNAE principal.</p>
+        <p className="text-sm text-slate-600">
+          CNAE ainda não informado{cnaeRequired ? " — a homologação exige o CNAE principal" : ""}.
+        </p>
       )}
       {pending && <p role="status" className="alert-warning">Consulta em andamento… atualize a página em instantes.</p>}
       {company.cnae_consulta_status === "falhou" && (

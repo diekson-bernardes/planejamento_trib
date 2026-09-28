@@ -215,6 +215,7 @@ export type Database = {
           id: string
           legal_name: string
           office_id: string
+          razao_social_pendente: boolean
         }
         Insert: {
           cnae_atualizado_em?: string | null
@@ -229,6 +230,7 @@ export type Database = {
           id?: string
           legal_name: string
           office_id: string
+          razao_social_pendente?: boolean
         }
         Update: {
           cnae_atualizado_em?: string | null
@@ -243,6 +245,7 @@ export type Database = {
           id?: string
           legal_name?: string
           office_id?: string
+          razao_social_pendente?: boolean
         }
         Relationships: [
           {
@@ -1399,6 +1402,12 @@ export type Database = {
         Returns: undefined
       }
       decision_threshold: { Args: { p_office: string }; Returns: number }
+      delete_case: {
+        Args: { p_case_id: string; p_reason: string }
+        Returns: undefined
+      }
+      delete_company: { Args: { p_company_id: string }; Returns: undefined }
+      delete_source_file: { Args: { p_file_id: string }; Returns: undefined }
       enqueue_job: {
         Args: {
           p_key: string
@@ -1447,6 +1456,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      purging_case: { Args: { p_case: string }; Returns: boolean }
       rapido_blockers: { Args: { p_case_id: string }; Returns: string[] }
       recommendation_for_update: {
         Args: { p_id: string }
@@ -1472,6 +1482,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      reopen_case: {
+        Args: { p_case_id: string; p_reason: string }
+        Returns: undefined
       }
       request_calculation: { Args: { p_case_id: string }; Returns: undefined }
       request_company_lookup: {
@@ -1513,6 +1527,19 @@ export type Database = {
       }
       storage_path_office: { Args: { p_name: string }; Returns: string }
       submit_recommendation: { Args: { p_id: string }; Returns: undefined }
+      update_case: {
+        Args: {
+          p_case_id: string
+          p_kind: string
+          p_period_end: string
+          p_period_start: string
+        }
+        Returns: undefined
+      }
+      update_company: {
+        Args: { p_company_id: string; p_legal_name: string }
+        Returns: undefined
+      }
       write_audit: {
         Args: {
           p_after: Json

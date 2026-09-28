@@ -285,6 +285,13 @@ class MemoryStorage:
     def upload(self, path: str, data: bytes, content_type: str) -> None:
         self.objects[path] = data
 
+    def list_prefix(self, prefix: str) -> list[str]:
+        return [p for p in self.objects if p.startswith(prefix.rstrip("/") + "/")]
+
+    def delete(self, paths: list[str]) -> None:
+        for p in paths:
+            self.objects.pop(p, None)
+
 
 class TenantFixture:
     """Cria um escritório/empresa/dossiê isolado para o teste e remove tudo no fim."""

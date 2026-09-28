@@ -60,8 +60,9 @@ export const createCaseSchema = z
     periodEnd: month,
     kind: z.enum(CASE_KINDS).default("completo"),
   })
-  .refine((v) => v.companyId || (v.cnpj && isValidCnpj(v.cnpj) && v.legalName), {
-    message: "Selecione uma empresa ou informe CNPJ válido e razão social",
+  // razão social opcional: sem ela, a empresa é cadastrada pelo CNPJ e a razão social vem da consulta à Receita
+  .refine((v) => v.companyId || (v.cnpj && isValidCnpj(v.cnpj)), {
+    message: "Selecione uma empresa ou informe um CNPJ válido",
   })
   .refine((v) => v.periodEnd >= v.periodStart, { message: "O fim do período deve ser após o início" })
   .refine((v) => v.kind !== "rapido" || monthsSpan(v.periodStart, v.periodEnd) === 12, {
@@ -95,6 +96,22 @@ export const manualValuesSchema = z
   .refine((v) => Object.entries(v.values).every(([k, x]) => k === "dre.resultado" || !x.startsWith("-")), {
     message: "Só o resultado da DRE pode ser negativo",
   });
+
+const reasonText = z.string().trim().min(5, "Informe o motivo (mín. 5 caracteres)").max(500);
+
+export const reasonSchema = z.object({ caseId: z.uuid(), reason: reasonText });
+
+export const updateCaseSchema = z
+  .object({ caseId: z.uuid(), periodStart: month, periodEnd: month, kind: z.enum(CASE_KINDS) })
+  .refine((v) => v.periodEnd >= v.periodStart, { message: "O fim do período deve ser após o início" })
+  .refine((v) => v.kind !== "rapido" || monthsSpan(v.periodStart, v.periodEnd) === 12, {
+    message: "O planejamento rápido usa os últimos 12 meses (ex.: 09/2025 a 08/2026)",
+  });
+
+export const companyNameSchema = z.object({
+  companyId: z.uuid(),
+  legalName: z.string().trim().min(2, "Informe a razão social").max(200),
+});
 
 export const cnaeSchema = z.object({
   companyId: z.uuid(),

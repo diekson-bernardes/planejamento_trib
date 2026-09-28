@@ -488,6 +488,11 @@ def save_company_cnae(conn: psycopg.Connection, company_id, office_id, data: dic
         (data["cnae_principal"], data.get("cnae_descricao"), Jsonb(data.get("cnaes_secundarios") or []),
          company_id, office_id),
     )
+    # empresa cadastrada só com o CNPJ: a razão social vem da consulta (a digitada nunca é sobrescrita)
+    name = (data.get("razao_social") or "").strip()
+    if name:
+        conn.execute("update companies set legal_name = %s, razao_social_pendente = false "
+                     "where id = %s and office_id = %s and razao_social_pendente", (name, company_id, office_id))
 
 
 def mark_company_lookup(conn: psycopg.Connection, company_id, office_id, status: str, error: str | None) -> None:

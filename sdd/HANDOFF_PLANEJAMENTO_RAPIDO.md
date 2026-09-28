@@ -8,16 +8,57 @@
 |---|---|
 | **Objetivo** | Comparar, para 2027, o Simples Nacional por dentro, o Simples por fora (híbrido) e o Lucro Presumido de uma empresa a partir só do faturamento dos últimos 12 meses, da folha e da DRE (PDF ou digitados), com CNAE consultado na Receita e o mesmo fluxo de homologação, aprovação do responsável técnico e PDF do dossiê completo. |
 | **Status** | 🔨 em andamento (build completo e commitado; falta push, PR e merge) |
-| **Feito** | Brainstorm, Define e Design (2026-09-26, commit `ab8778c`); Build com Verify Gate verde, revisão pós-build aplicada e golden `rapido_2027` aprovado (2026-09-28, commit `9f051b3`) |
+| **Feito** | Brainstorm, Define e Design (2026-09-26, commit `ab8778c`); Build com Verify Gate verde, revisão pós-build aplicada e golden `rapido_2027` aprovado (2026-09-28, commit `9f051b3`); gestão do dossiê — razão social pelo CNPJ, excluir/editar/reabrir (2026-09-28) |
 | **Falta** | Commit deste handoff, push da branch `feat/planejamento-faturamento-12m`, PR para `master` e merge pelo usuário; revisão contábil da tabela CNAE → anexo e das regras de 2027 antes do uso com clientes |
-| **Pronto quando** | O PR do ciclo 5 estiver merged na `master` com `npm run verify` = "VERIFY GATE: PASS" na branch (pytest 218, pgTAP 128, typecheck, vitest 22) |
+| **Pronto quando** | O PR do ciclo 5 (com a gestão do dossiê) estiver merged na `master` com `npm run verify` = "VERIFY GATE: PASS" na branch (pytest 221, pgTAP 142, typecheck, vitest 25) |
 
 ---
 
 ## Eventos
 
 - 2026-09-26 — Escopo definido pelo usuário: rotina nova de "planejamento rápido" (faturamento 12 meses + folha + DRE, PDF ou digitação), só 2027, sem Lucro Real; CNAE pela automação n8n do usuário com fallback digitado; tabela CNAE → anexo cobrindo todos os anexos.
+- 2026-09-28 — Escopo ampliado pelo usuário antes do PR: razão social pela consulta do CNPJ (opção a) e gestão do dossiê (excluir dossiê/arquivo/empresa, editar período/tipo/empresa, reabrir homologado). Decisão: qualquer membro do escritório reabre ou exclui dossiê homologado, sem restrição (apaga snapshot, recomendações e PDFs; só a auditoria permanece).
 - 2026-09-28 — Durante o Build, a base de créditos de CBS/IBS do rápido passou a não ter sugestão (sem livro/balancete, a sugestão zero dava crédito falso); golden apresentado já com créditos informados e aprovado pelo usuário.
+
+---
+
+## 2026-09-28 — Gestão do dossiê (razão social pelo CNPJ, excluir, editar, reabrir)
+
+### O que foi feito
+
+- Migration `supabase/migrations/20260928000006_gestao_dossie.sql` (aplicada no banco local): RPCs `delete_case`, `reopen_case`, `update_case`, `delete_source_file`, `update_company`, `delete_company`; proteções (append-only, homologado imutável, recomendação emitida) liberadas só dentro dessas funções pela marca de transação `app.purge_case` (auditoria nunca); `companies.razao_social_pendente` bloqueia a homologação; job `purge_storage` limpa o Storage.
+- Worker: `storage.py` com `list_prefix`/`delete`; job `purge_storage`; consulta de CNAE preenche a razão social quando pendente (digitada nunca é sobrescrita).
+- Web: "Novo dossiê" aceita só o CNPJ (razão social opcional) e lista "Empresas sem dossiê" com exclusão; página do dossiê com card "Empresa" (razão social + CNAE), "Dados do dossiê" (período/tipo), "Excluir arquivo" e "Reabrir ou excluir" (motivo obrigatório).
+- Testes: `services/worker/tests/test_gestao_dossie.py` (3 fluxos), `supabase/tests/gestao_dossie.test.sql` (14 asserts); smoke no sistema local reabriu e excluiu o dossiê `ad17fd06-ae22-4daa-ab6e-6c6eebb0d1ff` (PDF e 7 objetos removidos do Storage). Relatório: `sdd/BUILD_REPORT_GESTAO_DOSSIE.md`. Verify Gate: pytest 221, pgTAP 142, typecheck, vitest 25 — PASS.
+
+### Casos e testes em aberto
+
+- O dossiê de smoke do ciclo 5 (`ad17fd06…`) foi excluído no smoke da gestão; a empresa do seed 37704456000142 segue com o CNAE da consulta real.
+
+### Pendências
+
+**🐛 Bug fix** — o que ficou quebrado, parcial ou com comportamento errado conhecido:
+
+- nenhuma
+
+**✨ Feature improvement** — o que é incremento planejado, melhoria ou próxima etapa de escopo:
+
+- Risco aceito pelo usuário: qualquer membro apaga dossiê homologado com PDF emitido (só a auditoria permanece). Reavaliar antes de produção se o escritório precisar preservar pareceres emitidos.
+
+### Próximos passos
+
+1. Push da branch `feat/planejamento-faturamento-12m` e PR para `master` com ciclo 5 + gestão do dossiê. Pronto quando: PR aberto.
+2. Merge pelo usuário. Pronto quando: PR merged.
+
+### Alertas — o que não quebrar
+
+- A liberação das proteções só pode acontecer dentro das funções `security definer` que marcam `app.purge_case`; nunca conceder DELETE direto a `authenticated` nas tabelas protegidas.
+- `purge_storage` só apaga caminhos que começam com `<escritório>/<dossiê>/` do próprio job.
+- **Fora de escopo:** lixeira/restauração de dossiê excluído.
+
+### Onde está o trabalho
+
+Mesma branch `feat/planejamento-faturamento-12m`, sem push.
 
 ---
 

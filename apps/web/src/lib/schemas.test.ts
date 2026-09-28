@@ -43,8 +43,10 @@ describe("CNPJ e dossiê", () => {
     expect(isValidCnpj("11111111111111")).toBe(false);
   });
 
-  it("exige empresa existente ou CNPJ válido com razão social", () => {
+  it("exige empresa existente ou CNPJ válido (razão social opcional: vem da consulta)", () => {
     expect(createCaseSchema.safeParse({ periodStart: "2026-06", periodEnd: "2026-08" }).success).toBe(false);
+    expect(createCaseSchema.safeParse({ cnpj: "11222333000181", periodStart: "2026-06", periodEnd: "2026-08" }).success).toBe(true);
+    expect(createCaseSchema.safeParse({ cnpj: "11222333000100", periodStart: "2026-06", periodEnd: "2026-08" }).success).toBe(false);
     expect(
       createCaseSchema.safeParse({ cnpj: "11222333000181", legalName: "Comércio", periodStart: "2026-06", periodEnd: "2026-08" }).success,
     ).toBe(true);
@@ -164,5 +166,28 @@ describe("planejamento rápido (ciclo 5)", () => {
     expect(ok.success && ok.data.cnae).toBe("4744001");
     expect(cnaeSchema.safeParse({ companyId: uuid, cnae: "47440" }).success).toBe(false);
     expect(REQUIRED_DOC_TYPES).not.toContain("DECLARACAO_FATURAMENTO");
+  });
+});
+
+describe("gestão do dossiê", () => {
+  const uuid = "3f1d2c4b-5a6e-4f70-8a9b-0c1d2e3f4a5b";
+
+  it("exige motivo para reabrir ou excluir", async () => {
+    const { reasonSchema } = await import("@/lib/schemas");
+    expect(reasonSchema.safeParse({ caseId: uuid, reason: "abc" }).success).toBe(false);
+    expect(reasonSchema.safeParse({ caseId: uuid, reason: "Dossiê duplicado" }).success).toBe(true);
+  });
+
+  it("valida a edição do dossiê", async () => {
+    const { updateCaseSchema } = await import("@/lib/schemas");
+    expect(updateCaseSchema.safeParse({ caseId: uuid, periodStart: "2026-01", periodEnd: "2026-06", kind: "completo" }).success).toBe(true);
+    expect(updateCaseSchema.safeParse({ caseId: uuid, periodStart: "2026-01", periodEnd: "2026-06", kind: "rapido" }).success).toBe(false);
+    expect(updateCaseSchema.safeParse({ caseId: uuid, periodStart: "2026-08", periodEnd: "2026-06", kind: "completo" }).success).toBe(false);
+  });
+
+  it("exige razão social ao editar a empresa", async () => {
+    const { companyNameSchema } = await import("@/lib/schemas");
+    expect(companyNameSchema.safeParse({ companyId: uuid, legalName: " " }).success).toBe(false);
+    expect(companyNameSchema.safeParse({ companyId: uuid, legalName: "Comércio Ltda" }).success).toBe(true);
   });
 });

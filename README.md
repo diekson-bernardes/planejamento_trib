@@ -102,6 +102,17 @@ Dossiê do tipo **planejamento rápido** (escolhido na criação, período de 12
   motor do ciclo 4 sem Lucro Real; tela e PDF mostram a **faixa do Simples** por mês (anexo, faixa, nominal, dedução e
   efetiva) e o PDF identifica "planejamento rápido", o CNAE e a origem dos dados (PDF × digitado).
 
+## Gestão do dossiê
+
+- **Empresa nova só com o CNPJ**: deixe a razão social em branco em "Novo dossiê"; a empresa é cadastrada e a consulta
+  à Receita (job `lookup_company`) preenche a razão social e o CNAE. Se a consulta falhar, a página do dossiê pede a
+  razão social; a homologação fica bloqueada enquanto ela estiver pendente. Razão social digitada nunca é sobrescrita.
+- **Editar**: período e tipo do dossiê (antes da homologação), razão social e CNAE da empresa.
+- **Excluir**: arquivo enviado (antes da homologação), dossiê inteiro e empresa sem dossiês.
+- **Reabrir** dossiê homologado: descarta snapshot, simulações, projeções e recomendações (inclusive PDFs emitidos) e
+  mantém as premissas. Reabrir e excluir exigem motivo e ficam na auditoria; qualquer membro do escritório pode
+  (decisão do responsável de negócio em 2026-09-28). O job `purge_storage` apaga os arquivos do Storage.
+
 ## Pré-requisitos
 
 - Node.js 20+ e npm
