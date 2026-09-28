@@ -51,7 +51,7 @@ Escopo decidido pelo usuário:
 | **Files Created** | 4 (migration, pgTAP, teste de integração, este relatório) |
 | **Files Modified** | 12 |
 | **Files Deleted** | 0 |
-| **Verification Commands Run** | 12 (`supabase migration up`, pgTAP ×3, checagem real do Storage, pytest db, typecheck ×3, vitest, smoke no sistema local, `next build`, `npm run verify`) |
+| **Verification Commands Run** | 15 (`supabase migration up`, pgTAP ×3, checagem real do Storage, pytest db, typecheck ×3, vitest, smoke no sistema local, `next build`, `npm run verify`) |
 | **Verify Gate** | Green |
 | **Execution Mode** | default |
 
@@ -116,7 +116,7 @@ Escopo decidido pelo usuário:
 | **Command / Method** | `npm run verify` |
 | **Exit / Result** | 0 |
 | **Status** | Green |
-| **Evidence** | pytest 221 passed; pgTAP Files=7 Tests=142 Result: PASS; typecheck ok; vitest 25 passed — "VERIFY GATE: PASS" |
+| **Evidence** | pytest 223 passed; pgTAP Files=7 Tests=142 Result: PASS; typecheck ok; vitest 25 passed — "VERIFY GATE: PASS" |
 
 ### Manual UX Receipt
 
@@ -163,6 +163,9 @@ None — no formal external review; riscos tratados na implementação (liberaç
 |---:|---|---|---|
 | 1 | Revogar o auxiliar `purging_case` quebraria edições diretas de `tax_cases` (o gatilho roda como o usuário) | auxiliar mantido executável (só lê a marca da transação) | nenhum |
 | 2 | CNPJ do teste pgTAP já existia no seed | CNPJ válido sem uso (99887766000105) | nenhum |
+| 3 | Usuário relatou PDFs "na fila" e razão social/CNAE não preenchidos: nenhum worker rodando; `npm run dev:worker` falhava (pacote `worker` não instalado) e o worker não lia o `.env` da raiz | worker carrega o `.env` da raiz sem sobrescrever o ambiente; `npm run dev:worker` usa `scripts/dev-worker.mjs` (PYTHONPATH para `services/worker/src`); `.env` local criado (fora do Git); `.env.example` e README atualizados | fila processada: razão social e CNAE da empresa do usuário vieram da automação; "Faturamento LP.pdf" extraído com validações aprovadas |
+| 4 | Os testes de integração consumiam jobs de qualquer escritório — o Verify Gate processou a extração e a consulta do usuário com a configuração de teste (FILE_NOT_FOUND e URL vazia) | `claim_job`/`Pipeline` com filtro opcional de escritório, usado em todos os testes; teste de regressão; jobs do usuário recolocados na fila | nenhum após a correção |
+| 5 | A empresa fictícia do seed (`c0000000-…-0a`), fixture do pgTAP, foi excluída pelo usuário pela tela (auditoria 13:01, admin.a) | recriada a partir do `seed.sql` no banco local | pgTAP depende dela; excluí-la de novo quebra o Verify Gate local |
 
 ---
 

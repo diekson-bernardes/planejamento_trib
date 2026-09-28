@@ -32,8 +32,9 @@ CLAIM_SQL = """
 update jobs set status = 'running', attempts = attempts + 1, locked_at = now()
 where id = (
   select id from jobs
-  where (status = 'queued' and run_after <= now())
-     or (status = 'running' and locked_at < now() - make_interval(secs => %(lease)s))
+  where ((status = 'queued' and run_after <= now())
+     or (status = 'running' and locked_at < now() - make_interval(secs => %(lease)s)))
+    and (%(office)s::uuid is null or office_id = %(office)s::uuid)
   order by created_at
   for update skip locked
   limit 1
@@ -42,9 +43,10 @@ returning id, office_id, kind, payload, attempts
 """
 
 
-def claim_job(conn: psycopg.Connection, lease_seconds: int) -> dict[str, Any] | None:
+def claim_job(conn: psycopg.Connection, lease_seconds: int, office_id=None) -> dict[str, Any] | None:
+    """Próximo job da fila; `office_id` restringe a um escritório (testes não consomem jobs de outros escritórios)."""
     with conn.transaction():
-        return conn.execute(CLAIM_SQL, {"lease": lease_seconds}).fetchone()
+        return conn.execute(CLAIM_SQL, {"lease": lease_seconds, "office": office_id}).fetchone()
 
 
 def finish_job(conn: psycopg.Connection, job_id, office_id, note: str | None = None) -> None:

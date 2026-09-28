@@ -29,7 +29,7 @@ def prepare_case(db_conn, tenant, sample):
                         (tenant.office_id, tenant.user_id))
     for name in SAMPLE_FILES:
         tenant.add_file(sample(name), name + ".pdf")
-    pipe = Pipeline(db_conn, tenant.storage)
+    pipe = Pipeline(db_conn, tenant.storage, office_id=tenant.office_id)
     pipe.drain()
     as_user(db_conn, tenant.user_id, "select * from homologate_case(%s)", (tenant.case_id,))
     return pipe

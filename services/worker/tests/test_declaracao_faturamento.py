@@ -51,7 +51,7 @@ def test_declaracao_with_other_cnpj_is_blocked(db_conn, sample):
     t = TenantFixture(db_conn, cnpj="11222333000181")
     try:
         file_id = t.add_file(sample("declaracao_202608"), "declaracao.pdf")
-        Pipeline(db_conn, t.storage).drain()
+        Pipeline(db_conn, t.storage, office_id=t.office_id).drain()
         row = db_conn.execute("select status, error_code from source_files where id = %s", (file_id,)).fetchone()
         assert (row["status"], row["error_code"]) == ("cnpj_mismatch", "CNPJ_MISMATCH")
     finally:

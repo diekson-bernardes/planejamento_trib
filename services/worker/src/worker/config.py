@@ -7,6 +7,22 @@ from pydantic import BaseModel, Field
 
 # services/worker/rules (repositório); na imagem Docker, RULES_DIR=/app/rules
 DEFAULT_RULES_DIR = Path(__file__).resolve().parents[2] / "rules"
+# .env na raiz do repositório (desenvolvimento local; fora do Git). Na imagem Docker não existe: só variáveis do container.
+REPO_ENV_FILE = Path(__file__).resolve().parents[4] / ".env"
+
+
+def load_env_file(path: Path = REPO_ENV_FILE) -> None:
+    """Carrega CHAVE=valor do arquivo sem sobrescrever variáveis já definidas (o ambiente sempre prevalece)."""
+    if not path.is_file():
+        return
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
 
 
 class Settings(BaseModel):
@@ -32,6 +48,7 @@ def decision_params_path(settings: "Settings", year: int) -> str:
 
 
 def load_settings() -> Settings:
+    load_env_file()
     return Settings(
         database_url=os.environ.get(
             "DATABASE_URL", "postgresql://postgres:postgres@127.0.0.1:54322/postgres"

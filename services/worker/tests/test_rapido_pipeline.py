@@ -56,7 +56,7 @@ def test_rapido_flow(db_conn, tenant, sample, golden, rapido_credits, monkeypatc
     make_rapido(db_conn, tenant)
     for name in RAPIDO_NAMES:
         tenant.add_file(sample(name), name + ".pdf")
-    pipe = Pipeline(db_conn, tenant.storage)
+    pipe = Pipeline(db_conn, tenant.storage, office_id=tenant.office_id)
     pipe.drain()
     assert db_conn.execute("select count(*) as n from reconciliations where case_id = %s",
                            (tenant.case_id,)).fetchone()["n"] == 0                 # sem R1–R7 no rápido
@@ -134,9 +134,9 @@ def test_rapido_flow(db_conn, tenant, sample, golden, rapido_credits, monkeypatc
 
 def test_lookup_failure_allows_typed_cnae(db_conn, tenant, monkeypatch):
     make_rapido(db_conn, tenant)
-    monkeypatch.delenv("CNPJ_LOOKUP_MCP_URL", raising=False)
+    monkeypatch.setenv("CNPJ_LOOKUP_MCP_URL", "")
     as_user(db_conn, tenant.user_id, "select request_company_lookup(%s)", (tenant.company_id,))
-    Pipeline(db_conn, tenant.storage).drain()
+    Pipeline(db_conn, tenant.storage, office_id=tenant.office_id).drain()
     co = db_conn.execute("select cnae_consulta_status, cnae_consulta_erro from companies where id = %s",
                          (tenant.company_id,)).fetchone()
     assert co["cnae_consulta_status"] == "falhou" and "informe o CNAE" in co["cnae_consulta_erro"]   # AT-509
@@ -149,7 +149,7 @@ def test_rapido_without_revenue_or_folha_is_blocked(db_conn, tenant, sample):
     make_rapido(db_conn, tenant)
     as_user(db_conn, tenant.user_id, "select set_company_cnae(%s, '4744001', null)", (tenant.company_id,))
     tenant.add_file(sample("dre_202608"), "dre.pdf")
-    Pipeline(db_conn, tenant.storage).drain()
+    Pipeline(db_conn, tenant.storage, office_id=tenant.office_id).drain()
     with pytest.raises(psycopg.errors.RaiseException) as exc:
         as_user(db_conn, tenant.user_id, "select * from homologate_case(%s)", (tenant.case_id,))
     msg = str(exc.value)

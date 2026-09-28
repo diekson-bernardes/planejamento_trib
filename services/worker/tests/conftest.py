@@ -50,6 +50,13 @@ DEFAULT_MAPPINGS = {
 }
 
 
+@pytest.fixture(autouse=True)
+def no_real_cnpj_lookup(monkeypatch):
+    """Nenhum teste chama a automação n8n real: a URL do .env local é anulada (testes que precisam a definem e
+    substituem consultar_cnpj por uma função falsa)."""
+    monkeypatch.setenv("CNPJ_LOOKUP_MCP_URL", "")
+
+
 STRICT = os.environ.get("VERIFY_STRICT") == "1"  # no Verify Gate, pré-requisito ausente é falha
 
 

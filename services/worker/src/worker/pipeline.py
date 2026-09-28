@@ -114,8 +114,9 @@ def blocking(rows: list[dict], year: int) -> list[dict]:
 
 class Pipeline:
     def __init__(self, conn: psycopg.Connection, storage: Storage, rules: RuleSet | None = None,
-                 decision: DecisionParams | None = None):
+                 decision: DecisionParams | None = None, office_id=None):
         self.conn = conn
+        self.office_id = office_id      # None = todos os escritórios (worker); testes restringem ao próprio tenant
         self.storage = storage
         self.rules = rules or default_rules()
         self.decision = decision or default_decision_params()
@@ -428,7 +429,7 @@ class Pipeline:
     # ------------------------------------------------------------------ loop
     def run_once(self, lease_seconds: int, max_attempts: int) -> bool:
         """Processa um job. Devolve False quando a fila está vazia."""
-        job = db.claim_job(self.conn, lease_seconds)
+        job = db.claim_job(self.conn, lease_seconds, self.office_id)
         if job is None:
             return False
         try:

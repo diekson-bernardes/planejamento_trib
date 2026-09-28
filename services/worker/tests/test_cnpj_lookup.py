@@ -72,3 +72,19 @@ def test_failures_raise_lookup_error(kwargs, message):
 def test_invalid_cnpj_is_rejected_before_calling():
     with pytest.raises(LookupError_, match="CNPJ inválido"):
         consultar_cnpj(URL, "123", transport=transport({}))
+
+
+def test_env_file_does_not_override_environment(tmp_path, monkeypatch):
+    """O .env local completa o ambiente, mas nunca sobrescreve variável já definida (ex.: a URL anulada nos testes)."""
+    from worker.config import load_env_file
+
+    env = tmp_path / ".env"
+    env.write_text("# comentário\nCNPJ_LOOKUP_MCP_URL=https://do-arquivo.example\nZZ_TESTE_CHAVE='valor'\n", encoding="utf-8")
+    monkeypatch.setenv("CNPJ_LOOKUP_MCP_URL", "")
+    monkeypatch.delenv("ZZ_TESTE_CHAVE", raising=False)
+    load_env_file(env)
+    import os
+
+    assert os.environ["CNPJ_LOOKUP_MCP_URL"] == ""
+    assert os.environ["ZZ_TESTE_CHAVE"] == "valor"
+    monkeypatch.delenv("ZZ_TESTE_CHAVE")

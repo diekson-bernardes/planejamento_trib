@@ -132,8 +132,10 @@ npm run db:start
 
 1. Rode `npx supabase status` e copie `API_URL`, `ANON_KEY` e `SERVICE_ROLE_KEY`.
 2. Crie `apps/web/.env.local` com `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` (modelo em `.env.example`).
-3. Para o worker, exporte `DATABASE_URL`, `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (e, para consultar o CNAE,
-   `CNPJ_LOOKUP_MCP_URL` com o endereço da automação n8n; sem ela, o CNAE é digitado).
+3. Para o worker, crie o `.env` na raiz a partir do `.env.example` (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+   `DATABASE_URL` e, para consultar CNAE e razão social, `CNPJ_LOOKUP_MCP_URL` com o endereço da automação n8n). O
+   worker carrega esse arquivo sozinho; variáveis já exportadas prevalecem. **Sem o worker rodando, PDFs e consultas
+   ficam "na fila".**
 
 Usuários do seed (senha `senha-local-123`): `admin.a@example.com` (admin do Escritório A),
 `analista.a@example.com` (analista do A), `analista.b@example.com` (analista do B).

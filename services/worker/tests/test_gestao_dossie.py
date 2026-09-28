@@ -29,7 +29,7 @@ def emitted_case(db_conn, tenant, sample, golden, rapido_credits):
     make_rapido(db_conn, tenant)
     for name in RAPIDO_NAMES:
         tenant.add_file(sample(name), name + ".pdf")
-    pipe = Pipeline(db_conn, tenant.storage)
+    pipe = Pipeline(db_conn, tenant.storage, office_id=tenant.office_id)
     pipe.drain()
     as_user(db_conn, tenant.user_id, "select set_company_cnae(%s, '4744001', null)", (tenant.company_id,))
     as_user(db_conn, tenant.user_id, "select * from homologate_case(%s)", (tenant.case_id,))
@@ -133,13 +133,13 @@ def test_legal_name_comes_from_cnpj_lookup(db_conn, tenant, monkeypatch):
     monkeypatch.setenv("CNPJ_LOOKUP_MCP_URL", "https://mcp.example.test/mcp")
     monkeypatch.setattr(pipeline_module, "consultar_cnpj", fake_lookup)
     as_user(db_conn, tenant.user_id, "select request_company_lookup(%s)", (tenant.company_id,))
-    Pipeline(db_conn, tenant.storage).drain()
+    Pipeline(db_conn, tenant.storage, office_id=tenant.office_id).drain()
     co = db_conn.execute("select legal_name, razao_social_pendente, cnae_principal from companies where id = %s",
                          (tenant.company_id,)).fetchone()
     assert (co["legal_name"], co["razao_social_pendente"], co["cnae_principal"]) == ("EMPRESA TESTE", False, "4744001")
 
     as_user(db_conn, tenant.user_id, "select update_company(%s, 'Nome Digitado Ltda')", (tenant.company_id,))
     as_user(db_conn, tenant.user_id, "select request_company_lookup(%s)", (tenant.company_id,))
-    Pipeline(db_conn, tenant.storage).drain()
+    Pipeline(db_conn, tenant.storage, office_id=tenant.office_id).drain()
     assert db_conn.execute("select legal_name from companies where id = %s",
                            (tenant.company_id,)).fetchone()["legal_name"] == "Nome Digitado Ltda"
