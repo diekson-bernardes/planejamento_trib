@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { requestCalculation, startPlanning } from "@/app/(app)/cases/[id]/planning/actions";
 import { requestProjection } from "@/app/(app)/cases/[id]/planning/projection/actions";
 import { AssumptionForm, type AssumptionRow } from "@/components/AssumptionForm";
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ASSUMPTION_GROUP_LABEL, formatBRL, formatCompetence, formatDateTime, formatPct, REGIME_LABEL } from "@/lib/format";
 import { getSessionContext } from "@/lib/supabase/server";
@@ -89,7 +90,7 @@ export default async function PlanningPage({
       {erro && <p role="alert" className="alert-error">{erro}</p>}
       {ok && <p role="status" className="alert-success">{ok}</p>}
       {!homologated && <p className="alert-warning">Planejamento exige dossiê homologado. Homologue o dossiê primeiro.</p>}
-      {running && <p className="alert-warning">Processando sugestões ou cálculo… atualize a página em instantes.</p>}
+      <AutoRefresh active={running} label="Processando premissas, cálculo ou projeção… a página atualiza sozinha." />
       {calcNote && <p role="status" className="alert-warning">Último pedido de cálculo: {calcNote}.</p>}
 
       {homologated && assumptions.length === 0 && (

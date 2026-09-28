@@ -18,7 +18,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             )}
           </nav>
           <div className="flex items-center gap-3 text-sm">
-            {memberships.length > 1 ? (
+            {/* administrador sempre vê o seletor (e cria escritórios em Administração); demais, só com 2+ escritórios */}
+            {memberships.length > 1 || office?.role === "admin" ? (
               <form action={selectOffice} className="flex items-center gap-2">
                 <label htmlFor="officeId" className="sr-only">Escritório</label>
                 <select id="officeId" name="officeId" defaultValue={office?.office_id} className="input py-1">
@@ -27,6 +28,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   ))}
                 </select>
                 <button className="btn-secondary py-1" type="submit">Trocar</button>
+                {office?.role === "admin" && (
+                  <Link href="/admin#novo-escritorio" className="text-xs text-brand-700 underline">Novo escritório</Link>
+                )}
               </form>
             ) : (
               <span className="text-slate-600">{office?.office_name}</span>

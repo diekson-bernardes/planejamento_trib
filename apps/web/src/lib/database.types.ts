@@ -1401,6 +1401,10 @@ export type Database = {
         Args: { p_id: string; p_justification: string; p_value: Json }
         Returns: undefined
       }
+      create_office: {
+        Args: { p_copy_from: string; p_name: string }
+        Returns: string
+      }
       decision_threshold: { Args: { p_office: string }; Returns: number }
       delete_case: {
         Args: { p_case_id: string; p_reason: string }

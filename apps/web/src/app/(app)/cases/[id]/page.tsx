@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { deleteCase, deleteSourceFile, homologateCase, reclassifyFile, reopenCase, requestXlsx, updateCase } from "@/app/(app)/cases/actions";
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { CompanyCnae, type CompanyCnaeRow } from "@/components/CompanyCnae";
 import { ManualValuesForm, type ManualValueRow } from "@/components/ManualValuesForm";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -32,7 +33,7 @@ export default async function CasePage({
   const company = tc.companies as ({ legal_name: string; cnpj: string } & CompanyCnaeRow) | null;
   const rapido = tc.kind === "rapido";
 
-  const [{ data: files }, { data: failing }, { data: recs }, { data: snapshot }, { data: exportJobs }] = await Promise.all([
+  const [{ data: files }, { data: failing }, { data: recs }, { data: snapshot }, { data: exportJobs }, { data: caseJobs }] = await Promise.all([
     supabase
       .from("source_files")
       .select("id, original_name, doc_type, competence, status, error_code, error_message, parser_version, pages, created_at")
@@ -42,6 +43,7 @@ export default async function CasePage({
     supabase.from("reconciliations").select("status, justification").eq("case_id", id),
     supabase.from("snapshots").select("id, sha256, created_at").eq("case_id", id).maybeSingle(),
     supabase.from("jobs").select("status").eq("kind", "export_xlsx").contains("payload", { case_id: id }),
+    supabase.from("jobs").select("kind").contains("payload", { case_id: id }).in("status", ["queued", "running"]),
   ]);
 
   const homologated = tc.status === "homologated";
@@ -112,6 +114,10 @@ export default async function CasePage({
 
       {erro && <p role="alert" className="alert-error">{erro}</p>}
       {ok && <p role="status" className="alert-success">{ok}</p>}
+      <AutoRefresh
+        active={processing || (caseJobs?.length ?? 0) > 0 || company?.cnae_consulta_status === "pendente"}
+        label="Processando documentos ou consulta à Receita… a página atualiza sozinha."
+      />
 
       <section className="card space-y-3" aria-labelledby="upload-title">
         <h2 id="upload-title">Documentos</h2>

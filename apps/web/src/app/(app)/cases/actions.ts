@@ -323,12 +323,14 @@ export async function reopenCase(formData: FormData) {
 
 export async function deleteCase(formData: FormData) {
   const caseId = String(formData.get("caseId") ?? "");
+  // erros voltam para a lista quando a exclusão vem dela (único retorno aceito além da página do dossiê)
+  const back = formData.get("back") === "/cases" ? "/cases" : `/cases/${caseId}`;
   const parsed = reasonSchema.safeParse({ caseId, reason: formData.get("reason") });
-  if (!parsed.success) withError(`/cases/${caseId}`, firstIssue(parsed.error));
-  if (formData.get("confirm") !== "on") withError(`/cases/${caseId}`, "Marque a confirmação para excluir o dossiê.");
+  if (!parsed.success) withError(back, firstIssue(parsed.error));
+  if (formData.get("confirm") !== "on") withError(back, "Marque a confirmação para excluir o dossiê.");
   const supabase = await createClient();
   const { error } = await supabase.rpc("delete_case", { p_case_id: caseId, p_reason: parsed.data.reason });
-  if (error) withError(`/cases/${caseId}`, error.message);
+  if (error) withError(back, error.message);
   done("/cases", "Dossiê excluído.");
 }
 
@@ -357,4 +359,18 @@ export async function deleteCompany(formData: FormData) {
   const { error } = await supabase.rpc("delete_company", { p_company_id: String(formData.get("companyId") ?? "") });
   if (error) withError("/cases/new", error.message);
   done("/cases/new", "Empresa excluída.");
+}
+
+/* ------------------------------------------------------------------ escritórios */
+/** Administrador cria outro escritório (vira admin dele) e passa a trabalhar nele. */
+export async function createOffice(formData: FormData) {
+  const { office } = await getSessionContext();
+  if (!office || office.role !== "admin") withError("/admin", "Só o administrador cria um novo escritório.");
+  const name = String(formData.get("name") ?? "").trim();
+  if (name.length < 3) withError("/admin", "Informe o nome do escritório (mín. 3 caracteres).");
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_office", { p_name: name, p_copy_from: office.office_id });
+  if (error) withError("/admin", error.message);
+  (await cookies()).set(OFFICE_COOKIE, String(data), { httpOnly: true, sameSite: "lax", path: "/" });
+  done("/cases", `Escritório "${name}" criado. Você está trabalhando nele agora.`);
 }
