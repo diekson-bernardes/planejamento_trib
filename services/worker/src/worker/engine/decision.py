@@ -60,9 +60,11 @@ def _months(origins: dict, kind: str) -> str:
 
 def project(view: SnapshotView, confirmed: Assumptions, rules: RuleSet, params: DecisionParams,
             threshold: Decimal, blockers: list | None = None, base_params: DecisionParams | None = None,
-            regimes: tuple | None = None) -> ProjectionResult:
+            regimes: tuple | None = None, adjust=None) -> ProjectionResult:
     """Projeção do exercício de `rules`. Se o exercício é posterior ao dos meses completos (ex.: 2027), a projeção do
     ano base (com `base_params`) é deslocada com o crescimento confirmado (`reforma.crescimento`).
+
+    `adjust` (planejamento rápido): aplicado a cada projeção montada (base e sensibilidade), ex.: folha 12m do Fator R.
 
     Levanta ProjectionError quando não há dado mínimo para projetar (sem competência completa etc.)."""
     started = time.monotonic()
@@ -73,9 +75,11 @@ def project(view: SnapshotView, confirmed: Assumptions, rules: RuleSet, params: 
 
     def builder(levers: Levers = Levers()) -> ProjectedCase:
         if not shifted:
-            return build_projection(view, confirmed, params, levers)
-        pc = build_projection(view, confirmed, base_params, replace(levers, cbs=Decimal("1")))
-        return shift_year(pc, params, growth, levers)
+            pc = build_projection(view, confirmed, params, levers)
+        else:
+            pc = shift_year(build_projection(view, confirmed, base_params, replace(levers, cbs=Decimal("1"))),
+                            params, growth, levers)
+        return adjust(pc) if adjust is not None else pc
 
     base = builder()
     sim = calculate(SnapshotView(base.content), Assumptions(base.assumptions), rules, regimes)

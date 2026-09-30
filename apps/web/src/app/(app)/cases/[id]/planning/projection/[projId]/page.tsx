@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { ComparisonTable, type SimulationResultView } from "@/components/ComparisonTable";
+import { FatorRTable } from "@/components/FatorRTable";
+import { FolhaIdealTable } from "@/components/FolhaIdealTable";
 import { ProjectionTable, type ProjectionLine } from "@/components/ProjectionTable";
 import {
   RecommendationPanel,
@@ -12,7 +14,7 @@ import {
 } from "@/components/RecommendationPanel";
 import { SimplesBandTable } from "@/components/SimplesBandTable";
 import { SensitivityTable, type SensitivityRow } from "@/components/SensitivityTable";
-import { formatDateTime, MONTH_ORIGIN, orderedRegimes } from "@/lib/format";
+import { formatCnae, formatDateTime, MONTH_ORIGIN, orderedRegimes } from "@/lib/format";
 import { getSessionContext } from "@/lib/supabase/server";
 
 type ProjectionSummary = {
@@ -35,7 +37,7 @@ export default async function ProjectionPage({
 
   const { data: proj } = await supabase
     .from("projections")
-    .select("id, office_id, status, year, result, sensitivity, recommendation, rules_version, rules_hash, decision_version, decision_hash, threshold, snapshot_sha256, assumptions_hash, result_hash, engine_runs, duration_ms, created_at, error_message")
+    .select("id, office_id, status, year, result, sensitivity, recommendation, assumptions, rules_version, rules_hash, decision_version, decision_hash, threshold, snapshot_sha256, assumptions_hash, result_hash, engine_runs, duration_ms, created_at, error_message")
     .eq("id", projId)
     .eq("case_id", id)
     .maybeSingle();
@@ -63,13 +65,17 @@ export default async function ProjectionPage({
 
   const lines: ProjectionLine[] = [];
   for (let from = 0; ; from += 1000) {
-    const { data } = await supabase.from("projection_lines").select("regime, period, tax, kind, amount, origin")
+    const { data } = await supabase.from("projection_lines").select("regime, period, tax, kind, base, rate, amount, origin")
       .eq("projection_id", projId).order("ordinal").range(from, from + 999);
     if (!data?.length) break;
     lines.push(...(data as ProjectionLine[]));
     if (data.length < 1000) break;
   }
 
+  const { data: activities } = await supabase.from("case_activities").select("cnae, descricao, percentual")
+    .eq("case_id", id).order("percentual", { ascending: false });
+  const tratamento = ((proj.assumptions ?? []) as { key: string; value: unknown }[])
+    .find((a) => a.key === "rapido.folha_incompleta")?.value as string | undefined;
   const result = proj.result as unknown as ProjectionSummary;
   const computed = proj.recommendation as unknown as ComputedRecommendation;
   const sim = result.simulation;
@@ -109,7 +115,27 @@ export default async function ProjectionPage({
         <ComparisonTable result={sim} />
       </section>
 
+      {(activities?.length ?? 0) > 1 && (
+        <section className="card space-y-3" aria-labelledby="acts-title">
+          <h2 id="acts-title">Atividades da empresa</h2>
+          <table className="data-table">
+            <thead><tr><th>CNAE</th><th>Descrição</th><th className="num">% do faturamento</th></tr></thead>
+            <tbody>
+              {activities!.map((a) => (
+                <tr key={a.cnae}>
+                  <td className="whitespace-nowrap">{formatCnae(a.cnae)}</td>
+                  <td>{a.descricao}</td>
+                  <td className="num">{Number(a.percentual).toFixed(2).replace(".", ",")}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
       <SimplesBandTable lines={lines} />
+      <FatorRTable lines={lines} tratamento={tratamento} />
+      <FolhaIdealTable lines={lines} />
 
       <section className="card space-y-3" aria-labelledby="sens-title">
         <h2 id="sens-title">Sensibilidade e ponto de virada</h2>

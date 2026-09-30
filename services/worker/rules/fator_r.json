@@ -1,0 +1,14 @@
+{
+  "versao": "2026.1.0",
+  "dominio": "fator_r",
+  "fonte": "LC 123/2006 art. 18 § 24 (folha = salários, pró-labore e FGTS) e encargos usuais da folha; percentuais não conferidos na fonte primária",
+  "verificado": false,
+  "fgts": "0.08",
+  "inss_socio": "0.11",
+  "provisoes_salario": "0.1944",
+  "notas": {
+    "fgts": "FGTS sobre salários: entra na folha do Fator R e no custo do salário adicional",
+    "inss_socio": "INSS descontado do sócio sobre o pró-labore adicional (IRRF fora do escopo)",
+    "provisoes_salario": "13º (1/12) + férias com 1/3 (1/12 × 4/3) sobre o salário adicional"
+  }
+}

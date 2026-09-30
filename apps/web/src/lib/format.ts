@@ -158,7 +158,7 @@ export const ASSUMPTION_GROUP_LABEL: Record<string, string> = {
   receitas: "Outras receitas",
   pis_cofins: "PIS/Cofins",
   real: "Lucro Real",
-  folha: "Encargos da folha",
+  folha: "Folha (encargos e Fator R)",
   elegibilidade: "Elegibilidade",
   projecao: "Projeção do exercício (orçamento opcional)",
   conformidade: "Custo de conformidade (exibido à parte)",
@@ -209,5 +209,7 @@ export function formatAssumption(value: unknown, type: string): string {
   if (value === "nao_informado") return "Não informado";
   if (value === "sim") return "Sim";
   if (value === "nao") return "Não";
+  if (value === "media") return "Completar pela média dos meses informados";
+  if (value === "zero") return "Considerar zero";
   return String(value);
 }

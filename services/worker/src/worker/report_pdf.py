@@ -16,6 +16,8 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from worker.engine.cnae import format_cnae
+
 rl_config.invariant = 1
 
 REGIME_NAME = {"SIMPLES": "Simples Nacional", "PRESUMIDO": "Lucro Presumido", "REAL": "Lucro Real",
@@ -206,6 +208,9 @@ def story_for(d: ReportData) -> list:
                          pct(o["nominal"]), brl(o["deducao"]), pct(o["efetiva"])])
         story.append(_table(rows, font=7))
 
+    if d.rapido:
+        story += _fator_r_story(d, st)
+
     # ---------------------------------------------------------------- sensibilidade
     story.append(Paragraph("Sensibilidade e ponto de virada", st["h2"]))
     sens_rows = [["Variável", "Cenário base", "Ponto de virada", "Novo líder", "Distância", "Robustez", "Limite jurídico"]]
@@ -256,6 +261,57 @@ def story_for(d: ReportData) -> list:
     return story
 
 
+TRATAMENTO_LABEL = {"media": "meses sem folha completados pela média dos meses informados",
+                    "zero": "meses sem folha considerados com folha zero"}
+
+
+def _fator_r_story(d: ReportData, st: dict) -> list:
+    """Planejamento rápido (ciclo 6): atividades, Fator R mês a mês e folha ideal (informativa)."""
+    out = []
+    acts = d.rapido.get("atividades") or []
+    if len(acts) > 1:
+        out.append(Paragraph("Atividades da empresa", st["h2"]))
+        out.append(_table([["CNAE", "Descrição", "% do faturamento"]] + [
+            [format_cnae(a.get("cnae")), Paragraph(a.get("descricao") or "—", st["cell"]),
+             str(a.get("percentual")).replace(".", ",") + "%"] for a in acts], widths=[30 * mm, 150 * mm, 35 * mm], font=7))
+    seen, fr = set(), []
+    for l in d.lines:
+        if l["tax"] == "fator_r" and l["regime"] == "SIMPLES" and l["period"] not in seen:
+            seen.add(l["period"])
+            fr.append(l)
+    if fr:
+        rbt = {l["period"]: l["amount"] for l in d.lines if l["tax"] == "rbt12" and l["regime"] == "SIMPLES"}
+        out.append(Paragraph("Fator R mês a mês (folha dos 12 meses anteriores ÷ RBT12)", st["h2"]))
+        rows = [["Mês", "Folha 12m", "RBT12", "Fator R", "Anexo"]]
+        for l in fr:
+            rate = Decimal(str(l["rate"]))
+            rows.append([f"{l['period'][5:7]}/{l['period'][:4]}", brl(l["base"]), brl(rbt.get(l["period"], 0)),
+                         pct(rate), "III" if rate >= Decimal("0.28") else "V"])
+        out.append(_table(rows, font=7))
+        note = "Folha = salários × (1 + FGTS 8%) + pró-labore; meses após a declaração pela folha projetada."
+        if d.rapido.get("folha_incompleta"):
+            note += " Folha incompleta: " + TRATAMENTO_LABEL.get(str(d.rapido["folha_incompleta"]), str(d.rapido["folha_incompleta"])) + "."
+        out.append(Paragraph(note, st["small"]))
+    ideal: dict = {}
+    for l in d.lines:
+        if l["tax"].startswith("folha_ideal_"):
+            ideal.setdefault(l["period"], {})[l["tax"]] = l
+    if ideal:
+        out.append(Paragraph("Folha ideal para o Anexo III (informativa, fora dos totais)", st["h2"]))
+        rows = [["Mês", "Folha faltante/mês", "Economia III × V", "Custo via pró-labore", "Líquido", "Custo via salário",
+                 "Líquido"]]
+        for period in sorted(ideal):
+            x = ideal[period]
+            eco = Decimal(str(x["folha_ideal_economia"]["amount"]))
+            pl, sal = Decimal(str(x["folha_ideal_prolabore"]["amount"])), Decimal(str(x["folha_ideal_salario"]["amount"]))
+            rows.append([f"{period[5:7]}/{period[:4]}", brl(x["folha_ideal_economia"]["base"]), brl(eco), brl(pl),
+                         brl(eco - pl), brl(sal), brl(eco - sal)])
+        out.append(_table(rows, font=7))
+        out.append(Paragraph("Pró-labore: custo = INSS do sócio (11%). Salário: custo = salário + FGTS + provisões de 13º e "
+                             "férias. Parâmetros de rules/fator_r.json, ainda não verificados na fonte primária.", st["small"]))
+    return out
+
+
 def build_recommendation_pdf(d: ReportData) -> bytes:
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4), leftMargin=10 * mm, rightMargin=10 * mm, topMargin=10 * mm,
@@ -281,6 +337,7 @@ def report_data(row: dict) -> ReportData:
         threshold=Decimal(str(row["threshold"])), result=row["result"], sensitivity=row["sensitivity"],
         computed=row["computed"], assumptions=row["assumptions"],
         lines=[{"regime": l["regime"], "period": l["period"], "tax": l["tax"], "kind": l["kind"], "amount": l["amount"],
+                "base": l.get("base"), "rate": l.get("rate"),
                 "origin": l.get("origin") if l["tax"] == "faixa" else None}
                for l in row["lines"]],
         events=[{"event": e["event"], "comment": e["comment"]} for e in row["events"]],
@@ -304,4 +361,6 @@ def _rapido_info(row: dict) -> dict:
         typed_months = sorted({str(m["competence"])[:7] for m in manual if m.get("doc_type") == typed})
         parts = ([f"{pdf_n} PDF"] if pdf_n else []) + ([f"{len(typed_months)} mês(es) digitado(s)"] if typed_months else [])
         origem[label] = " + ".join(parts) or "—"
-    return {"cnae": row.get("cnae_principal"), "cnae_descricao": row.get("cnae_descricao"), "origem": origem}
+    tratamento = next((a.get("value") for a in row.get("assumptions") or [] if a.get("key") == "rapido.folha_incompleta"), None)
+    return {"cnae": row.get("cnae_principal"), "cnae_descricao": row.get("cnae_descricao"), "origem": origem,
+            "atividades": row.get("snapshot_activities") or [], "folha_incompleta": tratamento}

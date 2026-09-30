@@ -17,9 +17,11 @@ from worker.errors import (
     TransientError, Unclassified, WorkerError,
 )
 from worker.cnpj_lookup import LookupError_, consultar_cnpj
-from worker.config import cnae_table_path, decision_params_path, load_settings
+from worker.config import cnae_table_path, decision_params_path, fator_r_params_path, load_settings
 from worker.engine.cnae import CnaeTable, load_cnae_table
-from worker.engine.quick_view import REGIMES as RAPIDO_REGIMES, QuickCaseError, build_quick_case, is_rapido, rapido_suggestions
+from worker.engine.fator_r import FatorRParams, FolhaIncompletaError, folha_ideal_lines, load_fator_r_params
+from worker.engine.quick_view import (REGIMES as RAPIDO_REGIMES, QuickCaseError, build_quick_case, fator_r_adjuster,
+                                      is_rapido, rapido_suggestions)
 from worker.engine.assumptions import REFORM_GROUP, Assumptions, assumptions_hash, suggest
 from worker.engine.calculate import NoCompleteCompetence, calculate
 from worker.engine.decision import project
@@ -87,6 +89,11 @@ def default_decision_params() -> DecisionParams:
 @lru_cache(maxsize=1)
 def default_cnae_table() -> CnaeTable:
     return load_cnae_table(cnae_table_path(load_settings()))
+
+
+@lru_cache(maxsize=1)
+def default_fator_r_params() -> FatorRParams:
+    return load_fator_r_params(fator_r_params_path(load_settings()))
 
 
 @lru_cache(maxsize=8)
@@ -345,13 +352,14 @@ class Pipeline:
                       assumptions_hash=a_hash, rules_version=rules.version, rules_hash=rules.hash,
                       decision_version=decision.version, decision_hash=decision.hash, threshold=threshold,
                       assumptions=used, requested_by=job["payload"].get("requested_by"))
-        view, confirmed, only = SnapshotView(snap["content"]), Assumptions(used), None
+        view, confirmed, only, adjust = SnapshotView(snap["content"]), Assumptions(used), None, None
         try:
             if is_rapido(snap["content"]):     # snapshot rápido → conteúdo no formato do dossiê completo
                 qc = build_quick_case(snap["content"], confirmed)
                 view, confirmed, only = qc.view, qc.assumptions, RAPIDO_REGIMES
-            res = project(view, confirmed, rules, decision, threshold, blockers, self.decision, only)
-        except (ProjectionError, NoCompleteCompetence, QuickCaseError) as exc:
+                adjust = fator_r_adjuster(qc, confirmed, default_fator_r_params())   # folha 12m do Fator R
+            res = project(view, confirmed, rules, decision, threshold, blockers, self.decision, only, adjust)
+        except (ProjectionError, NoCompleteCompetence, QuickCaseError, FolhaIncompletaError) as exc:
             code = getattr(exc, "code", "PROJECTION_BLOCKED")
             db.save_projection(self.conn, **common, year=0, status="failed", result={}, sensitivity=[],
                                recommendation={}, result_hash=None, lines=[], engine_runs=None,
@@ -360,10 +368,15 @@ class Pipeline:
             log("projection.failed", job_id=job["id"], case_id=case_id, code=code)
             return code
         rec = res.recommendation.as_dict()
+        lines = res.lines()
+        if adjust is not None:   # folha ideal (informativa, fora dos totais) das atividades no Anexo V pelo Fator R
+            lines += [{**line_dict(l), "origin": {**l.origin, "mes_origem": res.projected.origins.get(l.period)}}
+                      for l in folha_ideal_lines(res.simulation.lines, res.projected.content, rules,
+                                                 default_fator_r_params())]
         proj_id = db.save_projection(
             self.conn, **common, year=res.projected.year, status="done", result=res.summary(),
             sensitivity=[s.as_dict() for s in res.sensitivity], recommendation=rec, result_hash=res.result_hash,
-            lines=res.lines(), engine_runs=res.runs, duration_ms=int((time.monotonic() - started) * 1000))
+            lines=lines, engine_runs=res.runs, duration_ms=int((time.monotonic() - started) * 1000))
         log("projection.blocked" if rec["status"] == "bloqueado" else "projection.done", job_id=job["id"],
             case_id=case_id, office_id=office_id, projection_id=proj_id, status=rec["status"], regime=rec["regime"],
             engine_runs=res.runs, duration_ms=int((time.monotonic() - started) * 1000))

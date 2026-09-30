@@ -201,6 +201,57 @@ export type Database = {
           },
         ]
       }
+      case_activities: {
+        Row: {
+          case_id: string
+          cnae: string
+          descricao: string | null
+          entered_at: string
+          entered_by: string
+          id: string
+          office_id: string
+          origem: string
+          percentual: number
+        }
+        Insert: {
+          case_id: string
+          cnae: string
+          descricao?: string | null
+          entered_at?: string
+          entered_by?: string
+          id?: string
+          office_id: string
+          origem?: string
+          percentual: number
+        }
+        Update: {
+          case_id?: string
+          cnae?: string
+          descricao?: string | null
+          entered_at?: string
+          entered_by?: string
+          id?: string
+          office_id?: string
+          origem?: string
+          percentual?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_activities_case_id_office_id_fkey"
+            columns: ["case_id", "office_id"]
+            isOneToOne: false
+            referencedRelation: "tax_cases"
+            referencedColumns: ["id", "office_id"]
+          },
+          {
+            foreignKeyName: "case_activities_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "offices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           cnae_atualizado_em: string | null
@@ -1509,6 +1560,10 @@ export type Database = {
       request_xlsx_export: { Args: { p_case_id: string }; Returns: undefined }
       return_recommendation: {
         Args: { p_comment: string; p_id: string }
+        Returns: undefined
+      }
+      set_case_activities: {
+        Args: { p_case_id: string; p_items: Json }
         Returns: undefined
       }
       set_company_cnae: {

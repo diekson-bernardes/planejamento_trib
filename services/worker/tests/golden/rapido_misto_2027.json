@@ -1,0 +1,256 @@
+{
+  "descricao": "Ciclo 6 — planejamento rápido fictício com atividades mistas: comércio 4744-0/01 (60%) + software 6201-5/01 (40%, Anexo V com Fator R). Faturamento, folha (salários + pró-labore) e DRE digitados; projeção de 2027 com a folha 12m derivada (salários × 1,08 + pró-labore) e a folha ideal informativa.",
+  "approved_by": "Diekson Bernardes (responsável de negócio)",
+  "approved_at": "2026-09-28",
+  "approval_note": "Aprovado no SDD Build do ciclo 6 após apresentação do Fator R mês a mês (Anexo V em 01–03/2027, III a partir de 04/2027, conta de 01/2027 conferida à mão), dos totais das 3 alternativas, da recomendação (Simples por dentro) e da folha ideal de 01–03/2027",
+  "sample_set": "fictício (tests/conftest.py: misto_content)",
+  "rules_version": "2027.1.0",
+  "decision_version": "2027.1.0",
+  "fator_r_version": "2026.1.0",
+  "threshold": "0.05",
+  "credits": "30000.00",
+  "reform_values": {
+    "reforma.cbs_aliquota": "0.095",
+    "reforma.ibs_aliquota": "0.001",
+    "reforma.crescimento": "0.05"
+  },
+  "receita_anual": "2152500.00",
+  "ranking": [
+    "SIMPLES",
+    "SIMPLES_HIBRIDO",
+    "PRESUMIDO"
+  ],
+  "regimes": {
+    "SIMPLES": {
+      "total": "270536.41",
+      "by_tax": {
+        "cbs": "42768.15",
+        "cpp": "107746.98",
+        "csll": "13162.50",
+        "ibs": "0.00",
+        "icms": "43853.84",
+        "irpj": "20577.54",
+        "iss": "42427.40"
+      },
+      "by_period": {
+        "2027-01": "23542.13",
+        "2027-02": "23934.96",
+        "2027-03": "24328.74",
+        "2027-04": "21161.61",
+        "2027-05": "21512.98",
+        "2027-06": "21865.64",
+        "2027-07": "22219.57",
+        "2027-08": "22574.78",
+        "2027-09": "22294.32",
+        "2027-10": "22330.97",
+        "2027-11": "22367.33",
+        "2027-12": "22403.38"
+      }
+    },
+    "PRESUMIDO": {
+      "total": "474240.64",
+      "by_tax": {
+        "adicional_irpj": "13884.00",
+        "cbs": "165403.65",
+        "cpp": "115920.00",
+        "csll": "38745.00",
+        "ibs": "1741.08",
+        "icms": "42408.91",
+        "irpj": "56826.00",
+        "iss": "0.00",
+        "rat": "10080.00",
+        "terceiros": "29232.00"
+      },
+      "by_period": {
+        "2027-01": "29291.41",
+        "2027-02": "29546.96",
+        "2027-03": "29802.52",
+        "2027-04": "30058.07",
+        "2027-05": "30313.62",
+        "2027-06": "29744.46",
+        "2027-07": "30824.04",
+        "2027-08": "31905.68",
+        "2027-09": "30824.72",
+        "2027-10": "30824.72",
+        "2027-11": "30824.72",
+        "2027-12": "30824.72",
+        "2027-T1": "25736.25",
+        "2027-T2": "27201.00",
+        "2027-T3": "28340.25",
+        "2027-T4": "28177.50"
+      }
+    },
+    "SIMPLES_HIBRIDO": {
+      "total": "390701.28",
+      "by_tax": {
+        "cbs": "161235.79",
+        "cpp": "107746.98",
+        "csll": "13162.50",
+        "ibs": "1697.23",
+        "icms": "43853.84",
+        "irpj": "20577.54",
+        "iss": "42427.40"
+      },
+      "by_period": {
+        "2027-01": "32406.58",
+        "2027-02": "32933.19",
+        "2027-03": "33460.57",
+        "2027-04": "31179.42",
+        "2027-05": "31672.82",
+        "2027-06": "32167.26",
+        "2027-07": "32662.70",
+        "2027-08": "33159.14",
+        "2027-09": "32721.73",
+        "2027-10": "32750.66",
+        "2027-11": "32779.37",
+        "2027-12": "32807.84"
+      }
+    }
+  },
+  "recomendacao": {
+    "status": "recomendado",
+    "regime": "SIMPLES"
+  },
+  "fator_r": [
+    {
+      "mes": "2027-01",
+      "folha_12m": "529920.00",
+      "rbt12": "2050000.00",
+      "fator_r": "0.2585",
+      "anexo": "V"
+    },
+    {
+      "mes": "2027-02",
+      "folha_12m": "550524.00",
+      "rbt12": "2058000.00",
+      "fator_r": "0.2675",
+      "anexo": "V"
+    },
+    {
+      "mes": "2027-03",
+      "folha_12m": "568104.00",
+      "rbt12": "2066125.00",
+      "fator_r": "0.2750",
+      "anexo": "V"
+    },
+    {
+      "mes": "2027-04",
+      "folha_12m": "582660.00",
+      "rbt12": "2074375.00",
+      "fator_r": "0.2809",
+      "anexo": "III"
+    },
+    {
+      "mes": "2027-05",
+      "folha_12m": "594192.00",
+      "rbt12": "2082750.00",
+      "fator_r": "0.2853",
+      "anexo": "III"
+    },
+    {
+      "mes": "2027-06",
+      "folha_12m": "602700.00",
+      "rbt12": "2091250.00",
+      "fator_r": "0.2882",
+      "anexo": "III"
+    },
+    {
+      "mes": "2027-07",
+      "folha_12m": "605008.80",
+      "rbt12": "2099875.00",
+      "fator_r": "0.2881",
+      "anexo": "III"
+    },
+    {
+      "mes": "2027-08",
+      "folha_12m": "607468.80",
+      "rbt12": "2108625.00",
+      "fator_r": "0.2881",
+      "anexo": "III"
+    },
+    {
+      "mes": "2027-09",
+      "folha_12m": "610080.00",
+      "rbt12": "2117500.00",
+      "fator_r": "0.2881",
+      "anexo": "III"
+    },
+    {
+      "mes": "2027-10",
+      "folha_12m": "612540.00",
+      "rbt12": "2126250.00",
+      "fator_r": "0.2881",
+      "anexo": "III"
+    },
+    {
+      "mes": "2027-11",
+      "folha_12m": "615000.00",
+      "rbt12": "2135000.00",
+      "fator_r": "0.2881",
+      "anexo": "III"
+    },
+    {
+      "mes": "2027-12",
+      "folha_12m": "617460.00",
+      "rbt12": "2143750.00",
+      "fator_r": "0.2880",
+      "anexo": "III"
+    }
+  ],
+  "folha_ideal": [
+    {
+      "mes": "2027-01",
+      "tipo": "folha_ideal_economia",
+      "base": "3673.33",
+      "valor": "3426.87"
+    },
+    {
+      "mes": "2027-01",
+      "tipo": "folha_ideal_prolabore",
+      "base": "3673.33",
+      "valor": "404.07"
+    },
+    {
+      "mes": "2027-01",
+      "tipo": "folha_ideal_salario",
+      "base": "3401.23",
+      "valor": "4334.53"
+    },
+    {
+      "mes": "2027-02",
+      "tipo": "folha_ideal_economia",
+      "base": "2143.00",
+      "valor": "3472.19"
+    },
+    {
+      "mes": "2027-02",
+      "tipo": "folha_ideal_prolabore",
+      "base": "2143.00",
+      "valor": "235.73"
+    },
+    {
+      "mes": "2027-02",
+      "tipo": "folha_ideal_salario",
+      "base": "1984.26",
+      "valor": "2528.74"
+    },
+    {
+      "mes": "2027-03",
+      "tipo": "folha_ideal_economia",
+      "base": "867.58",
+      "valor": "3517.20"
+    },
+    {
+      "mes": "2027-03",
+      "tipo": "folha_ideal_prolabore",
+      "base": "867.58",
+      "valor": "95.43"
+    },
+    {
+      "mes": "2027-03",
+      "tipo": "folha_ideal_salario",
+      "base": "803.31",
+      "valor": "1023.74"
+    }
+  ]
+}

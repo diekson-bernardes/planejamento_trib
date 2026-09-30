@@ -122,6 +122,44 @@ export const cnaeSchema = z.object({
   description: z.string().trim().max(200).optional(),
 });
 
+/** Percentual digitado ("60", "39,5", "40.00") → centésimos inteiros (6000), ou null se inválido. */
+export function percentToCents(value: string | undefined): number | null {
+  const v = normalizeDecimal(value ?? "");
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(v)) return null;
+  const [int, dec = ""] = v.split(".");
+  return Number(int) * 100 + Number(dec.padEnd(2, "0"));
+}
+
+const activityItemSchema = z.object({
+  cnae: z
+    .string()
+    .transform((v) => onlyDigits(v))
+    .pipe(z.string().length(7, "CNAE deve ter 7 dígitos (ex.: 6201-5/01)")),
+  descricao: z.string().trim().max(300, "Descrição do CNAE muito longa").default(""),
+  percentual: z.string().default(""),
+  origem: z.enum(["receita", "manual"]).default("manual"),
+});
+
+/** Atividades do planejamento rápido: ao menos uma; com mais de uma, percentuais > 0 somando exatamente 100,00%. */
+export const activitiesSchema = z
+  .object({ caseId: z.uuid(), items: z.array(activityItemSchema).min(1, "Marque ao menos uma atividade") })
+  .refine((v) => new Set(v.items.map((i) => i.cnae)).size === v.items.length, { message: "CNAE repetido na lista de atividades" })
+  .refine((v) => v.items.length === 1 || v.items.every((i) => (percentToCents(i.percentual) ?? 0) > 0), {
+    message: "Informe o percentual de cada atividade (maior que zero, até 2 casas)",
+  })
+  .refine((v) => v.items.length === 1 || v.items.reduce((acc, i) => acc + (percentToCents(i.percentual) ?? 0), 0) === 10000, {
+    message: "A soma dos percentuais precisa ser exatamente 100,00%",
+  })
+  .transform((v) => ({
+    caseId: v.caseId,
+    items: v.items.map((i) => ({
+      cnae: i.cnae,
+      descricao: i.descricao,
+      origem: i.origem,
+      percentual: v.items.length === 1 ? "100.00" : ((percentToCents(i.percentual) ?? 0) / 100).toFixed(2),
+    })),
+  }));
+
 export const registerUploadSchema = z.object({
   caseId: z.uuid(),
   fileId: z.uuid(),

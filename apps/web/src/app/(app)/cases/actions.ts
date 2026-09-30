@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import type { TablesInsert } from "@/lib/database.types";
 import { formatCnpj } from "@/lib/format";
 import {
+  activitiesSchema,
   adjustValueSchema,
   cnaeSchema,
   companyNameSchema,
@@ -288,6 +289,25 @@ export async function setCompanyCnae(formData: FormData) {
   if (error) withError(`/cases/${caseId}`, error.message);
   revalidatePath(`/cases/${caseId}`);
   redirect(`/cases/${caseId}?ok=${encodeURIComponent("CNAE gravado.")}`);
+}
+
+/** Atividades do planejamento rápido (CNAEs marcados e percentual do faturamento de cada um). */
+export async function saveActivities(formData: FormData) {
+  const caseId = String(formData.get("caseId") ?? "");
+  const back = `/cases/${caseId}`;
+  let items: unknown = [];
+  try {
+    items = JSON.parse(String(formData.get("items") ?? "[]"));
+  } catch {
+    withError(back, "Lista de atividades inválida");
+  }
+  const parsed = activitiesSchema.safeParse({ caseId, items });
+  if (!parsed.success) withError(back, firstIssue(parsed.error));
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_case_activities", { p_case_id: parsed.data.caseId, p_items: parsed.data.items });
+  if (error) withError(back, error.message);
+  revalidatePath(back);
+  redirect(`${back}?ok=${encodeURIComponent("Atividades gravadas.")}`);
 }
 
 /* ------------------------------------------------------------------ gestão do dossiê */
