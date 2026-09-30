@@ -215,6 +215,66 @@ def cnae_table():
     return load_cnae_table(cnae_table_path(load_settings()))
 
 
+MISTO_MONTHS = [f"2025-{m:02d}" for m in range(9, 13)] + [f"2026-{m:02d}" for m in range(1, 9)]
+MISTO_CREDITS = "30000.00"
+
+
+def misto_content(folha_months: list[str] | None = None) -> dict:
+    """Ciclo 6 — dossiê rápido fictício (sem PDF, sem PII): comércio 4744-0/01 (60%) + software 6201-5/01 (40%, Anexo V
+    com Fator R). Faturamento 150.000 + 2.500/mês, salários 12.000 + 2.800/mês e pró-labore 6.000 de 09/2025 a
+    08/2026; DRE (lucro de 12%) só de 06–08/2026. `folha_months` restringe os meses com folha informada."""
+    from decimal import Decimal
+
+    folha_months = MISTO_MONTHS if folha_months is None else folha_months
+    mv = []
+    for i, m in enumerate(MISTO_MONTHS):
+        fat = Decimal("150000.00") + Decimal("2500.00") * i
+        mv.append({"doc_type": "FATURAMENTO", "competence": m + "-01", "field_key": "faturamento.mes", "value": str(fat)})
+        if m in folha_months:
+            mv.append({"doc_type": "FOLHA", "competence": m + "-01", "field_key": "folha.salarios",
+                       "value": str(Decimal("12000.00") + Decimal("2800.00") * i)})
+            mv.append({"doc_type": "FOLHA", "competence": m + "-01", "field_key": "folha.pro_labore", "value": "6000.00"})
+        if m >= "2026-06":
+            mv.append({"doc_type": "DRE", "competence": m + "-01", "field_key": "dre.resultado",
+                       "value": str((fat * Decimal("0.12")).quantize(Decimal("0.01")))})
+    return {"schema_version": 1, "case": {"kind": "rapido"},
+            "company": {"cnpj": "11222333000181", "legal_name": "Comércio e Software Exemplo Ltda (fictícia)",
+                        "cnae_principal": "4744001", "cnae_descricao": "Comércio varejista de ferragens e ferramentas",
+                        "cnaes_secundarios": [{"codigo": "6201501",
+                                               "descricao": "Desenvolvimento de programas de computador sob encomenda"}],
+                        "cnae_origem": "receita"},
+            "files": [], "values": [], "manual_values": mv,
+            "activities": [{"cnae": "4744001", "descricao": "Comércio varejista de ferragens e ferramentas",
+                            "percentual": "60.00", "origem": "receita"},
+                           {"cnae": "6201501", "descricao": "Desenvolvimento de programas de computador sob encomenda",
+                            "percentual": "40.00", "origem": "receita"}]}
+
+
+def misto_assumptions(content, rules, rules_2027, cnae_table, golden, overrides: dict | None = None):
+    """Sugestões aceitas + declarações do golden do ciclo 2 + premissas de 2027 + compras creditáveis fixas."""
+    from worker.engine.assumptions import Assumptions, suggest
+    from worker.engine.quick_view import build_quick_case, rapido_suggestions
+
+    qc = build_quick_case(content)
+    sug = rapido_suggestions(content, qc, suggest(qc.view, rules, None, rules_2027), rules, cnae_table)
+    values = {**golden("motor_202606_08")["assumption_overrides"], **REFORM_GOLDEN}
+    rows = {}
+    for x in sug:
+        value = MISTO_CREDITS if x.key == "reforma.creditos_base" else values.get(x.key, x.suggested_value)
+        rows[(x.key, x.scope)] = {"key": x.key, "scope": x.scope, "value": value, "suggested_value": x.suggested_value}
+    for (key, scope), value in (overrides or {}).items():
+        rows[(key, scope)] = {**rows.get((key, scope), {"key": key, "scope": scope, "suggested_value": None}), "value": value}
+    return Assumptions(list(rows.values()))
+
+
+@pytest.fixture(scope="session")
+def fator_r_params():
+    from worker.config import fator_r_params_path, load_settings
+    from worker.engine.fator_r import load_fator_r_params
+
+    return load_fator_r_params(fator_r_params_path(load_settings()))
+
+
 @pytest.fixture(scope="session")
 def rapido_credits(snapshot_content_06_08, rules, rules_2027, golden):
     """Compras creditáveis de 06–08/2026 do dossiê completo da mesma empresa (Livro/balancete), usadas como a base de
@@ -261,7 +321,7 @@ CLEANUP_TABLES = [
     "recommendation_events", "recommendations", "projection_lines", "projections",
     "simulation_lines", "simulations", "assumptions",
     "audit_events", "snapshots", "reconciliations", "validations", "value_adjustments",
-    "extracted_values", "jobs", "source_files", "tax_cases", "account_mappings", "companies",
+    "extracted_values", "jobs", "source_files", "case_activities", "tax_cases", "account_mappings", "companies",
     "office_members", "offices",
 ]
 

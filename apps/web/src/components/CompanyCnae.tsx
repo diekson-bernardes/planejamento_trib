@@ -62,7 +62,7 @@ export function CompanyCnae({ caseId, company, readOnly, cnaeRequired }: {
               Secundários: {secundarios.map((c) => `${formatCnae(c.codigo)} ${c.descricao ?? ""}`).join("; ")}
             </p>
           )}
-          <p className="text-xs text-slate-600">O anexo do Simples é sugerido pelo CNAE principal e confirmado nas premissas.</p>
+          <p className="text-xs text-slate-600">O anexo do Simples é sugerido pelo CNAE de cada atividade marcada abaixo e confirmado nas premissas.</p>
         </div>
       ) : (
         <p className="text-sm text-slate-600">

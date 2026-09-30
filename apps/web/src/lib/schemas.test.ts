@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  activitiesSchema,
   adjustValueSchema,
   createCaseSchema,
   isValidCnpj,
   justifySchema,
   normalizeDecimal,
+  percentToCents,
   registerUploadSchema,
   toleranceSchema,
 } from "@/lib/schemas";
@@ -189,5 +191,30 @@ describe("gestão do dossiê", () => {
     const { companyNameSchema } = await import("@/lib/schemas");
     expect(companyNameSchema.safeParse({ companyId: uuid, legalName: " " }).success).toBe(false);
     expect(companyNameSchema.safeParse({ companyId: uuid, legalName: "Comércio Ltda" }).success).toBe(true);
+  });
+});
+
+describe("atividades do planejamento rápido (ciclo 6)", () => {
+  const item = (cnae: string, percentual = "") => ({ cnae, descricao: "x", percentual, origem: "receita" });
+  it("converte percentuais para centésimos", () => {
+    expect(percentToCents("60")).toBe(6000);
+    expect(percentToCents("39,99")).toBe(3999);
+    expect(percentToCents("40.5")).toBe(4050);
+    expect(percentToCents("1,234")).toBeNull();
+    expect(percentToCents("")).toBeNull();
+  });
+  it("exige soma exata de 100,00% com mais de uma atividade (AT-603)", () => {
+    const ok = activitiesSchema.safeParse({ caseId: uuid, items: [item("4744-0/01", "60"), item("6201501", "40,00")] });
+    expect(ok.success && ok.data.items.map((i) => [i.cnae, i.percentual])).toEqual([["4744001", "60.00"], ["6201501", "40.00"]]);
+    const bad = activitiesSchema.safeParse({ caseId: uuid, items: [item("4744001", "60"), item("6201501", "39,99")] });
+    expect(bad.success).toBe(false);
+    expect(bad.error?.issues[0].message).toContain("exatamente 100,00%");
+  });
+  it("atividade única recebe 100% e lista vazia, CNAE inválido ou repetido são recusados (AT-604/605)", () => {
+    const one = activitiesSchema.safeParse({ caseId: uuid, items: [item("6201501")] });
+    expect(one.success && one.data.items[0].percentual).toBe("100.00");
+    expect(activitiesSchema.safeParse({ caseId: uuid, items: [] }).success).toBe(false);
+    expect(activitiesSchema.safeParse({ caseId: uuid, items: [item("47440")] }).success).toBe(false);
+    expect(activitiesSchema.safeParse({ caseId: uuid, items: [item("4744001", "50"), item("4744-0/01", "50")] }).success).toBe(false);
   });
 });

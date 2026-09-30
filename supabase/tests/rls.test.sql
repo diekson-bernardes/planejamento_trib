@@ -7,6 +7,9 @@ insert into public.companies (id, office_id, cnpj, legal_name)
 values ('c0000000-0000-4000-8000-00000000000a', 'a0000000-0000-4000-8000-000000000001', '11222333000181',
         'Comércio Exemplo Ltda (fictícia)')
 on conflict do nothing;
+-- tolerância conhecida (desfeita no rollback): o administrador pode tê-la alterado pela tela
+update public.offices set settings = settings || '{"tolerance_brl": 1.00}'
+ where id = 'a0000000-0000-4000-8000-000000000001';
 
 select plan(22);
 

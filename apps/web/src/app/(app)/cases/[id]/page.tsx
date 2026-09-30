@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { deleteCase, deleteSourceFile, homologateCase, reclassifyFile, reopenCase, requestXlsx, updateCase } from "@/app/(app)/cases/actions";
 import { AutoRefresh } from "@/components/AutoRefresh";
+import { type ActivityRow, CaseActivities } from "@/components/CaseActivities";
 import { CompanyCnae, type CompanyCnaeRow } from "@/components/CompanyCnae";
 import { ManualValuesForm, type ManualValueRow } from "@/components/ManualValuesForm";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -56,6 +57,7 @@ export default async function CasePage({
   const months = monthsBetween(tc.period_start, tc.period_end);
   // planejamento rápido: meses com PDF por documento, valores digitados e bloqueios da homologação
   let manual: ManualValueRow[] = [];
+  let activities: ActivityRow[] = [];
   let rapidoBlockers: string[] = [];
   const pdfMonths: Record<string, string[]> = {};
   if (!homologated) {
@@ -64,12 +66,15 @@ export default async function CasePage({
     rapidoBlockers = (blockers ?? []) as string[];
   }
   if (rapido) {
-    const [{ data: mv }, { data: decl }] = await Promise.all([
+    const [{ data: mv }, { data: decl }, { data: acts }] = await Promise.all([
       supabase.from("manual_values").select("doc_type, competence, field_key, value").eq("case_id", id),
       supabase.from("extracted_values").select("competence").eq("case_id", id)
         .eq("doc_type", "DECLARACAO_FATURAMENTO").eq("field_key", "faturamento.mes"),
+      supabase.from("case_activities").select("cnae, descricao, percentual, origem").eq("case_id", id)
+        .order("percentual", { ascending: false }),
     ]);
     manual = (mv ?? []) as ManualValueRow[];
+    activities = (acts ?? []) as ActivityRow[];
     pdfMonths.DECLARACAO_FATURAMENTO = (decl ?? []).map((d) => d.competence.slice(0, 7));
     for (const doc of ["FOLHA_ALTERDATA", "DRE_ALTERDATA"]) {
       pdfMonths[doc] = extracted.filter((f) => f.doc_type === doc && f.competence).map((f) => f.competence!.slice(0, 7));
@@ -182,6 +187,11 @@ export default async function CasePage({
       </section>
 
       {company && <CompanyCnae caseId={id} company={company} readOnly={homologated} cnaeRequired={rapido} />}
+      {rapido && company && (
+        <CaseActivities caseId={id} readOnly={homologated} saved={activities}
+          principal={{ cnae: company.cnae_principal, descricao: company.cnae_descricao }}
+          secundarios={Array.isArray(company.cnaes_secundarios) ? (company.cnaes_secundarios as { codigo: string; descricao?: string }[]) : []} />
+      )}
       {rapido && (
         <ManualValuesForm caseId={id} months={months} pdfMonths={pdfMonths} manual={manual} readOnly={homologated} />
       )}

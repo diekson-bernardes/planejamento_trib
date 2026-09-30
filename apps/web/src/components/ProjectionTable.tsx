@@ -2,6 +2,7 @@ import { formatBRL, MONTH_ORIGIN, REGIME_LABEL, TAX_LABEL } from "@/lib/format";
 
 export type ProjectionLine = {
   regime: string; period: string; tax: string; kind: string; amount: string | number; origin?: Record<string, unknown> | null;
+  base?: string | number | null; rate?: string | number | null;
 };
 
 const MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];

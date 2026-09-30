@@ -71,3 +71,7 @@ def load_settings() -> Settings:
 
 def cnae_table_path(settings: Settings) -> str:
     return os.path.join(settings.rules_dir, "cnae_anexos.json")
+
+
+def fator_r_params_path(settings: Settings) -> str:
+    return os.path.join(settings.rules_dir, "fator_r.json")

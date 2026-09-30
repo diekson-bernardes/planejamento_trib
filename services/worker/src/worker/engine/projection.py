@@ -61,6 +61,7 @@ class ProjectedCase:
     plan: dict = field(default_factory=dict)       # mês → MonthFacts usado (após alavancas)
     templates: dict = field(default_factory=dict)  # chave da atividade → Activity modelo (descrição e tributos declarados)
     timeline: dict = field(default_factory=dict)   # mês → receita (centavos), inclusive o ano anterior
+    payroll_history: dict = field(default_factory=dict)  # mês → (empregados, sócios) com alavanca, inclusive anos anteriores
 
 
 def year_months(year: int) -> list[str]:
@@ -261,9 +262,12 @@ def build_projection(view: SnapshotView, confirmed: Assumptions, params: Decisio
         "margem_anual": str((sum((plan[c].margem * plan[c].receita for c in months), ZERO)
                              / sum((plan[c].receita for c in months), ZERO)).quantize(Decimal("0.000001"))),
     }
+    payroll = {c: (month_facts(view, c).empregados * levers.folha, month_facts(view, c).socios * levers.folha)
+               for c in realized_all if c not in months}
+    payroll.update({c: (plan[c].empregados, plan[c].socios) for c in months})
     return ProjectedCase(year, {"schema_version": view.content.get("schema_version", 1),
                                 "company": view.content.get("company", {}), "files": files, "values": values},
-                         rows, origins, base, plan, templates, timeline)
+                         rows, origins, base, plan, templates, timeline, payroll)
 
 
 def shift_year(pc: ProjectedCase, params: DecisionParams, growth: Decimal, levers: Levers = Levers()) -> ProjectedCase:
@@ -329,7 +333,8 @@ def shift_year(pc: ProjectedCase, params: DecisionParams, growth: Decimal, lever
     }
     return ProjectedCase(year, {"schema_version": pc.content.get("schema_version", 1), "company": pc.content.get("company", {}),
                                 "files": files, "values": values},
-                         rows, {m: PROJETADO for m in months}, base, plan, pc.templates, timeline)
+                         rows, {m: PROJETADO for m in months}, base, plan, pc.templates, timeline,
+                         {**pc.payroll_history, **{m: (plan[m].empregados, plan[m].socios) for m in months}})
 
 
 def _v(comp: str, origin: str, doc: str, ordinal: int, section: str, field_key: str, value: Decimal,

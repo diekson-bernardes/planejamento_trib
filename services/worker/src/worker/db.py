@@ -429,7 +429,8 @@ def get_report_data(conn: psycopg.Connection, recommendation_id, office_id) -> d
         "p.created_at as projected_at, c.period_start, c.period_end, c.kind, co.legal_name, co.cnpj, "
         "co.cnae_principal, co.cnae_descricao, o.name as office_name, "
         "(select s.content -> 'manual_values' from snapshots s where s.id = p.snapshot_id) as manual_values, "
-        "(select s.content -> 'files' from snapshots s where s.id = p.snapshot_id) as snapshot_files "
+        "(select s.content -> 'files' from snapshots s where s.id = p.snapshot_id) as snapshot_files, "
+        "(select s.content -> 'activities' from snapshots s where s.id = p.snapshot_id) as snapshot_activities "
         "from recommendations r join projections p on p.id = r.projection_id and p.office_id = r.office_id "
         "join tax_cases c on c.id = r.case_id and c.office_id = r.office_id "
         "join companies co on co.id = c.company_id join offices o on o.id = r.office_id "
@@ -448,7 +449,7 @@ def get_report_data(conn: psycopg.Connection, recommendation_id, office_id) -> d
         (recommendation_id, office_id),
     ).fetchall()
     rec["lines"] = conn.execute(
-        "select regime, period, tax, kind, amount, formula, origin from projection_lines where projection_id = %s "
+        "select regime, period, tax, kind, base, rate, amount, formula, origin from projection_lines where projection_id = %s "
         "and office_id = %s order by ordinal",
         (rec["projection_id"], office_id),
     ).fetchall()
