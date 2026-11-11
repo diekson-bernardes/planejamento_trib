@@ -1,0 +1,32 @@
+# Render Blueprint — worker Python (fila de jobs: extração de PDFs, consulta de CNPJ, premissas, cálculo, projeção, PDF).
+# O site (apps/web) fica no Vercel. Segredos com sync: false são informados no painel do Render, nunca aqui.
+services:
+  - type: worker
+    name: planejamento-trib-worker
+    runtime: docker
+    region: virginia            # perto do Supabase planTributario (us-east-1)
+    plan: starter               # background worker não tem plano gratuito no Render
+    branch: master
+    autoDeploy: true
+    dockerfilePath: ./services/worker/Dockerfile
+    dockerContext: ./services/worker
+    envVars:
+      - key: SUPABASE_URL
+        value: https://ovbxuduqexdanoyfbesz.supabase.co
+      - key: STORAGE_BUCKET
+        value: documents
+      - key: WORKER_POLL_SECONDS
+        value: "2"
+      - key: WORKER_MAX_ATTEMPTS
+        value: "3"
+      - key: WORKER_LEASE_SECONDS
+        value: "300"
+      - key: CNPJ_LOOKUP_TIMEOUT
+        value: "20"
+      # segredos: preencher no painel ao criar o Blueprint
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DATABASE_URL         # use a string do Session pooler (porta 5432), não a conexão direta (só IPv6)
+        sync: false
+      - key: CNPJ_LOOKUP_MCP_URL
+        sync: false
